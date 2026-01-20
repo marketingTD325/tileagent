@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import tegeldepotLogo from '@/assets/tegeldepot-logo.png';
+import tileforceLogo from '@/assets/tileforce-logo.png';
 import { useToast } from '@/hooks/use-toast';
 import { Search, TrendingUp, FileText, Users } from 'lucide-react';
 
@@ -74,13 +74,16 @@ export default function Auth() {
     <div className="min-h-screen flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-dark text-white p-12 flex-col justify-between">
-        <div>
+        <div className="flex items-center gap-4">
           <img 
-            src={tegeldepotLogo} 
-            alt="Tegel & Sanitair Depot" 
-            className="h-16 w-auto"
+            src={tileforceLogo} 
+            alt="TileForce AI Agent" 
+            className="h-14 w-14 rounded-xl"
           />
-          <p className="text-white/70 mt-3 text-lg">SEO Agent</p>
+          <div>
+            <h1 className="text-2xl font-bold">TileForce</h1>
+            <p className="text-white/70">AI Agent</p>
+          </div>
         </div>
         
         <div className="space-y-8">
@@ -130,7 +133,7 @@ export default function Auth() {
         </div>
         
         <p className="text-sm text-white/40">
-          © 2024 SEO Agent voor Tegeldepot.nl
+          © 2024 TileForce AI Agent
         </p>
       </div>
       
@@ -140,9 +143,9 @@ export default function Auth() {
           <CardHeader className="text-center">
             <div className="lg:hidden flex justify-center mb-4">
               <img 
-                src={tegeldepotLogo} 
-                alt="Tegel & Sanitair Depot" 
-                className="h-12 w-auto"
+                src={tileforceLogo} 
+                alt="TileForce AI Agent" 
+                className="h-12 w-12 rounded-lg"
               />
             </div>
             <CardTitle className="text-2xl">Welkom</CardTitle>
