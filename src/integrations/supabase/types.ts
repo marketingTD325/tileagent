@@ -14,7 +14,260 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_log: {
+        Row: {
+          action_description: string
+          action_type: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string | null
+          user_id: string
+        }
+        Insert: {
+          action_description: string
+          action_type: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          user_id: string
+        }
+        Update: {
+          action_description?: string
+          action_type?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      competitor_analyses: {
+        Row: {
+          analysis_data: Json | null
+          competitor_id: string
+          content_gaps: Json | null
+          created_at: string
+          id: string
+          keyword_overlap: Json | null
+          top_keywords: Json | null
+          user_id: string
+          visibility_score: number | null
+        }
+        Insert: {
+          analysis_data?: Json | null
+          competitor_id: string
+          content_gaps?: Json | null
+          created_at?: string
+          id?: string
+          keyword_overlap?: Json | null
+          top_keywords?: Json | null
+          user_id: string
+          visibility_score?: number | null
+        }
+        Update: {
+          analysis_data?: Json | null
+          competitor_id?: string
+          content_gaps?: Json | null
+          created_at?: string
+          id?: string
+          keyword_overlap?: Json | null
+          top_keywords?: Json | null
+          user_id?: string
+          visibility_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_analyses_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitors: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          name: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          name: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generated_content: {
+        Row: {
+          content: string
+          content_type: string
+          created_at: string
+          id: string
+          is_favorite: boolean | null
+          language: string | null
+          target_keywords: string[] | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          content_type: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean | null
+          language?: string | null
+          target_keywords?: string[] | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          is_favorite?: boolean | null
+          language?: string | null
+          target_keywords?: string[] | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      keywords: {
+        Row: {
+          category: string | null
+          created_at: string
+          difficulty: number | null
+          id: string
+          is_tracking: boolean | null
+          keyword: string
+          last_checked: string | null
+          position: number | null
+          previous_position: number | null
+          search_volume: number | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          difficulty?: number | null
+          id?: string
+          is_tracking?: boolean | null
+          keyword: string
+          last_checked?: string | null
+          position?: number | null
+          previous_position?: number | null
+          search_volume?: number | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          difficulty?: number | null
+          id?: string
+          is_tracking?: boolean | null
+          keyword?: string
+          last_checked?: string | null
+          position?: number | null
+          previous_position?: number | null
+          search_volume?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          role: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      seo_audits: {
+        Row: {
+          created_at: string
+          id: string
+          issues: Json | null
+          meta_description: string | null
+          recommendations: Json | null
+          score: number | null
+          technical_data: Json | null
+          title: string | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          issues?: Json | null
+          meta_description?: string | null
+          recommendations?: Json | null
+          score?: number | null
+          technical_data?: Json | null
+          title?: string | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          issues?: Json | null
+          meta_description?: string | null
+          recommendations?: Json | null
+          score?: number | null
+          technical_data?: Json | null
+          title?: string | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
