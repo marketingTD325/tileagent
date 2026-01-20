@@ -503,17 +503,17 @@ export default function ContentGenerator() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Content Generator</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Content Generator</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             Genereer SEO-geoptimaliseerde content in de Tegeldepot tone of voice
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Generator Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -573,7 +573,7 @@ export default function ContentGenerator() {
                 {/* Internal Links Section - Only show for category_with_links */}
                 {contentType === 'category_with_links' && (
                   <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <Label className="flex items-center gap-2">
                         <Link className="h-4 w-4" />
                         Interne Links
@@ -584,13 +584,15 @@ export default function ContentGenerator() {
                           variant="secondary" 
                           size="sm" 
                           onClick={() => setShowSitemapPicker(!showSitemapPicker)}
+                          className="text-xs sm:text-sm"
                         >
-                          <Globe className="h-4 w-4 mr-1" />
-                          {showSitemapPicker ? 'Verberg Sitemap' : 'Uit Sitemap'}
+                          <Globe className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">{showSitemapPicker ? 'Verberg Sitemap' : 'Uit Sitemap'}</span>
+                          <span className="sm:hidden">Sitemap</span>
                         </Button>
-                        <Button type="button" variant="outline" size="sm" onClick={addInternalLink}>
-                          <Plus className="h-4 w-4 mr-1" />
-                          Handmatig
+                        <Button type="button" variant="outline" size="sm" onClick={addInternalLink} className="text-xs sm:text-sm">
+                          <Plus className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Handmatig</span>
                         </Button>
                       </div>
                     </div>
@@ -670,15 +672,15 @@ export default function ContentGenerator() {
                     {/* Selected links list */}
                     <div className="space-y-2">
                       {internalLinks.map((link, index) => (
-                        <div key={index} className="flex gap-2 items-center">
+                        <div key={index} className="flex flex-col sm:flex-row gap-2 p-2 sm:p-0 rounded-lg sm:rounded-none bg-muted/30 sm:bg-transparent">
                           <Input
-                            placeholder="Ankertekst (bijv. vloertegels)"
+                            placeholder="Ankertekst"
                             value={link.anchor}
                             onChange={(e) => updateInternalLink(index, 'anchor', e.target.value)}
                             className="flex-1"
                           />
                           <Input
-                            placeholder="URL (bijv. /vloertegels/)"
+                            placeholder="URL"
                             value={link.url}
                             onChange={(e) => updateInternalLink(index, 'url', e.target.value)}
                             className="flex-1"
@@ -689,7 +691,7 @@ export default function ContentGenerator() {
                               variant="ghost"
                               size="icon"
                               onClick={() => removeInternalLink(index)}
-                              className="shrink-0"
+                              className="shrink-0 self-end sm:self-auto"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -741,9 +743,9 @@ export default function ContentGenerator() {
             {/* Generated Content */}
             {generatedContent && (
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-4">
-                  <CardTitle>Gegenereerde Content</CardTitle>
-                  <div className="flex items-center gap-2">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <CardTitle className="text-lg sm:text-xl">Gegenereerde Content</CardTitle>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <div className="flex items-center border rounded-lg p-1 bg-muted/30">
                       <Button 
                         variant={showHtmlPreview ? "secondary" : "ghost"} 
@@ -751,8 +753,8 @@ export default function ContentGenerator() {
                         onClick={() => setShowHtmlPreview(true)}
                         className="h-7 px-2"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Preview
+                        <Eye className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Preview</span>
                       </Button>
                       <Button 
                         variant={!showHtmlPreview ? "secondary" : "ghost"} 
@@ -760,28 +762,28 @@ export default function ContentGenerator() {
                         onClick={() => setShowHtmlPreview(false)}
                         className="h-7 px-2"
                       >
-                        <Code className="h-4 w-4 mr-1" />
-                        Broncode
+                        <Code className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Broncode</span>
                       </Button>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent)}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Kopieer
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent)} className="ml-auto sm:ml-0">
+                      <Copy className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Kopieer</span>
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
                   {showHtmlPreview ? (
                     <div 
-                      className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 p-6 rounded-lg
+                      className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 p-4 md:p-6 rounded-lg
                         prose-headings:text-foreground prose-p:text-foreground/90
                         prose-a:text-primary prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-primary/80
                         prose-strong:text-foreground prose-ul:text-foreground/90 prose-li:text-foreground/90"
                       dangerouslySetInnerHTML={{ __html: generatedContent }}
                     />
                   ) : (
-                    <div className="bg-muted/50 p-4 rounded-lg overflow-x-auto">
-                      <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
+                    <div className="bg-muted/50 p-3 md:p-4 rounded-lg overflow-x-auto">
+                      <pre className="text-xs md:text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
                         {generatedContent}
                       </pre>
                     </div>
@@ -870,29 +872,29 @@ export default function ContentGenerator() {
           </div>
 
           {/* History Sidebar */}
-          <div>
+          <div className="lg:order-none order-first">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5" />
                   Geschiedenis
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {loadingHistory ? (
-                  <div className="flex justify-center py-8">
+                  <div className="flex justify-center py-6">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : history.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
+                  <p className="text-center text-muted-foreground py-6 text-sm">
                     Nog geen content gegenereerd
                   </p>
                 ) : (
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[300px] lg:max-h-[600px] overflow-y-auto">
                     {history.map((item) => (
                       <div 
                         key={item.id} 
-                        className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                        className="p-2.5 sm:p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
                         onClick={() => setGeneratedContent(item.content)}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -918,7 +920,7 @@ export default function ContentGenerator() {
                             )}
                           </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
+                        <p className="text-xs text-muted-foreground mt-1.5">
                           {new Date(item.created_at).toLocaleDateString('nl-NL', {
                             day: 'numeric',
                             month: 'short',
