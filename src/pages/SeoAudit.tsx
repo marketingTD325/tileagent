@@ -162,6 +162,21 @@ export default function SeoAudit() {
     return <Info className="h-4 w-4 text-blue-500" />;
   };
 
+  const loadSavedAudit = (audit: any) => {
+    setUrl(audit.url);
+    // Convert database format to analysis format
+    const savedAnalysis: SeoAnalysis = {
+      score: audit.score || 0,
+      title: audit.title || '',
+      metaDescription: audit.meta_description || '',
+      issues: (audit.issues as any[]) || [],
+      recommendations: (audit.recommendations as any[]) || [],
+      technicalData: (audit.technical_data as any) || {},
+    };
+    setAnalysis(savedAnalysis);
+    toast({ title: 'Audit geladen', description: `Score: ${audit.score}/100` });
+  };
+
   if (loading || !user) return null;
 
   return (
@@ -357,8 +372,8 @@ export default function SeoAudit() {
                 {recentAudits.map((audit) => (
                   <div 
                     key={audit.id}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
-                    onClick={() => setUrl(audit.url)}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => loadSavedAudit(audit)}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`text-xl font-bold ${getScoreColor(audit.score)}`}>
@@ -371,7 +386,10 @@ export default function SeoAudit() {
                         </p>
                       </div>
                     </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    <Button variant="ghost" size="sm">
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Bekijk
+                    </Button>
                   </div>
                 ))}
               </div>
