@@ -74,3 +74,25 @@ export async function fetchSitemap(domain: string, search?: string, limit?: numb
   if (error) throw error;
   return data as { success: boolean; urls: SitemapUrl[]; total: number; error?: string };
 }
+
+// Content Quality Analysis API
+export interface ContentScoreResult {
+  scores: {
+    eeat: { score: number; feedback: string };
+    helpfulness: { score: number; feedback: string };
+    seo: { score: number; feedback: string };
+    readability: { score: number; feedback: string };
+  };
+  overallScore: number;
+  topPriority: string;
+  strengths: string[];
+}
+
+export async function analyzeContentQuality(content: string, contentType?: string) {
+  const { data, error } = await supabase.functions.invoke('analyze-content-quality', {
+    body: { content, contentType }
+  });
+  
+  if (error) throw error;
+  return data as { success: boolean; analysis: ContentScoreResult; error?: string };
+}

@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateContent, fetchSitemap, SitemapUrl } from '@/lib/api';
+import { generateContent, fetchSitemap, SitemapUrl, analyzeContentQuality, ContentScoreResult } from '@/lib/api';
 import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check, Code, Eye, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import ContentScoreCard from '@/components/ContentScoreCard';
 
 type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
 
@@ -56,6 +57,8 @@ export default function ContentGenerator() {
   const [showHtmlPreview, setShowHtmlPreview] = useState(true);
   const [linkValidation, setLinkValidation] = useState<{ found: InternalLink[]; missing: InternalLink[] } | null>(null);
   const [isReprocessingLinks, setIsReprocessingLinks] = useState(false);
+  const [contentScore, setContentScore] = useState<ContentScoreResult | null>(null);
+  const [isAnalyzingContent, setIsAnalyzingContent] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -210,6 +213,7 @@ export default function ContentGenerator() {
     setIsGenerating(true);
     setGeneratedContent('');
     setLinkValidation(null);
+    setContentScore(null);
     try {
       const keywordArray = keywords.split(',').map(k => k.trim()).filter(Boolean);
       const validLinks = internalLinks.filter(link => link.anchor.trim() && link.url.trim());
@@ -328,6 +332,35 @@ export default function ContentGenerator() {
       });
     } finally {
       setIsReprocessingLinks(false);
+    }
+  };
+
+  // Analyze content quality
+  const handleAnalyzeContent = async () => {
+    if (!generatedContent) return;
+    
+    setIsAnalyzingContent(true);
+    try {
+      const result = await analyzeContentQuality(generatedContent, getContentTypeLabel(contentType));
+      
+      if (result.success && result.analysis) {
+        setContentScore(result.analysis);
+        toast({ 
+          title: 'Analyse compleet!', 
+          description: `Totaalscore: ${result.analysis.overallScore.toFixed(1)}/10` 
+        });
+      } else {
+        throw new Error(result.error || 'Analyse mislukt');
+      }
+    } catch (error: any) {
+      console.error('Analysis error:', error);
+      toast({ 
+        title: 'Analyse mislukt', 
+        description: error.message || 'Er ging iets mis. Probeer het opnieuw.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsAnalyzingContent(false);
     }
   };
 
@@ -777,6 +810,14 @@ export default function ContentGenerator() {
                       )}
                     </div>
                   )}
+                  
+                  {/* Content Score Card */}
+                  <ContentScoreCard 
+                    score={contentScore}
+                    isAnalyzing={isAnalyzingContent}
+                    onAnalyze={handleAnalyzeContent}
+                    hasContent={!!generatedContent}
+                  />
                 </CardContent>
               </Card>
             )}
