@@ -59,6 +59,7 @@ export default function ContentGenerator() {
   const [isReprocessingLinks, setIsReprocessingLinks] = useState(false);
   const [contentScore, setContentScore] = useState<ContentScoreResult | null>(null);
   const [isAnalyzingContent, setIsAnalyzingContent] = useState(false);
+  const [autoAnalyzeEnabled, setAutoAnalyzeEnabled] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -268,10 +269,14 @@ export default function ContentGenerator() {
         });
 
         loadHistory();
-        toast({ title: 'Content gegenereerd!', description: 'Kwaliteitsanalyse wordt uitgevoerd...' });
         
-        // Auto-analyze content quality
-        autoAnalyzeContent(result.content);
+        // Auto-analyze content quality if enabled
+        if (autoAnalyzeEnabled) {
+          toast({ title: 'Content gegenereerd!', description: 'Kwaliteitsanalyse wordt uitgevoerd...' });
+          autoAnalyzeContent(result.content);
+        } else {
+          toast({ title: 'Content gegenereerd!', description: 'Je tekst is klaar en opgeslagen.' });
+        }
       } else {
         throw new Error(result.error || 'Generatie mislukt');
       }
@@ -695,24 +700,41 @@ export default function ContentGenerator() {
                   </div>
                 )}
 
-                <Button 
-                  onClick={handleGenerate} 
-                  disabled={isGenerating || !productName.trim()}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Genereren...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Genereer Content
-                    </>
-                  )}
-                </Button>
+                <div className="flex items-center justify-between gap-4">
+                  <Button 
+                    onClick={handleGenerate} 
+                    disabled={isGenerating || !productName.trim()}
+                    className="flex-1"
+                    size="lg"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Genereren...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Genereer Content
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="autoAnalyze"
+                      checked={autoAnalyzeEnabled}
+                      onChange={(e) => setAutoAnalyzeEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-input accent-primary"
+                    />
+                    <Label htmlFor="autoAnalyze" className="text-sm text-muted-foreground cursor-pointer">
+                      Automatische kwaliteitsanalyse na generatie
+                    </Label>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
