@@ -65,6 +65,105 @@ export default function ContentGenerator() {
     if (user) loadHistory();
   }, [user]);
 
+  // Auto-fetch sitemap and suggest relevant links when product name changes for category_with_links
+  useEffect(() => {
+    const autoSuggestLinks = async () => {
+      if (contentType !== 'category_with_links' || !productName.trim() || productName.length < 3) {
+        return;
+      }
+
+      // Debounce: wait 800ms after user stops typing
+      const timeoutId = setTimeout(async () => {
+        // Only auto-fetch if we haven't loaded sitemap yet, or search term changed significantly
+        if (sitemapUrls.length === 0) {
+          setIsFetchingSitemap(true);
+          try {
+            const result = await fetchSitemap(sitemapDomain, undefined, 200);
+            if (result.success && result.urls) {
+              setSitemapUrls(result.urls);
+            }
+          } catch (error) {
+            console.error('Auto-fetch sitemap error:', error);
+          } finally {
+            setIsFetchingSitemap(false);
+          }
+        }
+
+        // Now filter and auto-suggest based on product name
+        if (sitemapUrls.length > 0) {
+          autoSelectRelevantLinks(productName, sitemapUrls);
+        }
+      }, 800);
+
+      return () => clearTimeout(timeoutId);
+    };
+
+    autoSuggestLinks();
+  }, [productName, contentType, sitemapUrls.length]);
+
+  // Auto-select relevant links based on product name keywords
+  const autoSelectRelevantLinks = (searchTerm: string, urls: SitemapUrl[]) => {
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    
+    if (searchWords.length === 0) return;
+
+    // Score each URL by how many search words match
+    const scoredUrls = urls.map(url => {
+      const pathLower = url.path.toLowerCase();
+      const anchorLower = url.suggestedAnchor.toLowerCase();
+      
+      let score = 0;
+      searchWords.forEach(word => {
+        if (pathLower.includes(word)) score += 2;
+        if (anchorLower.includes(word)) score += 1;
+      });
+      
+      // Bonus for exact phrase match
+      if (pathLower.includes(searchTerm.toLowerCase().replace(/\s+/g, '-'))) score += 5;
+      if (pathLower.includes(searchTerm.toLowerCase().replace(/\s+/g, ''))) score += 3;
+      
+      return { url, score };
+    });
+
+    // Filter URLs with score > 0 and sort by score
+    const relevantUrls = scoredUrls
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6) // Top 6 matches
+      .map(item => item.url);
+
+    if (relevantUrls.length === 0) return;
+
+    // Check current links to avoid duplicates
+    const currentUrls = new Set(internalLinks.map(l => l.url));
+    const newLinks = relevantUrls.filter(u => !currentUrls.has(u.path));
+
+    if (newLinks.length === 0) return;
+
+    // Replace empty links or add new ones
+    const updatedLinks = [...internalLinks.filter(l => l.anchor.trim() || l.url.trim())];
+    
+    newLinks.forEach(sitemapUrl => {
+      if (updatedLinks.length < 8) { // Max 8 links
+        updatedLinks.push({ anchor: sitemapUrl.suggestedAnchor, url: sitemapUrl.path });
+      }
+    });
+
+    // Ensure at least one empty slot for manual addition
+    if (updatedLinks.length === 0) {
+      updatedLinks.push({ anchor: '', url: '' });
+    }
+
+    setInternalLinks(updatedLinks);
+    
+    if (newLinks.length > 0) {
+      toast({
+        title: `${newLinks.length} relevante links gevonden`,
+        description: `Automatisch gesuggereerd op basis van "${productName}"`,
+      });
+    }
+  };
+
   const loadHistory = async () => {
     try {
       const { data, error } = await supabase
