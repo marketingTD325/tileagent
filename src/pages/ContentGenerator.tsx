@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateContent, fetchSitemap, SitemapUrl } from '@/lib/api';
-import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check, Code, Eye } from 'lucide-react';
+import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check, Code, Eye, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
 
@@ -54,6 +54,7 @@ export default function ContentGenerator() {
   const [isFetchingSitemap, setIsFetchingSitemap] = useState(false);
   const [showSitemapPicker, setShowSitemapPicker] = useState(false);
   const [showHtmlPreview, setShowHtmlPreview] = useState(true);
+  const [linkValidation, setLinkValidation] = useState<{ found: InternalLink[]; missing: InternalLink[] } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -80,6 +81,26 @@ export default function ContentGenerator() {
     }
   };
 
+  // Validate which links are present in generated content
+  const validateLinks = (content: string, links: InternalLink[]) => {
+    const found: InternalLink[] = [];
+    const missing: InternalLink[] = [];
+    
+    links.forEach(link => {
+      if (link.url.trim()) {
+        // Check if the URL appears in an href attribute
+        const urlPattern = new RegExp(`href=["']${link.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'i');
+        if (urlPattern.test(content)) {
+          found.push(link);
+        } else {
+          missing.push(link);
+        }
+      }
+    });
+    
+    return { found, missing };
+  };
+
   const handleGenerate = async () => {
     if (!productName.trim()) {
       toast({ title: 'Fout', description: 'Vul een product/onderwerp in', variant: 'destructive' });
@@ -88,7 +109,7 @@ export default function ContentGenerator() {
 
     setIsGenerating(true);
     setGeneratedContent('');
-
+    setLinkValidation(null);
     try {
       const keywordArray = keywords.split(',').map(k => k.trim()).filter(Boolean);
       const validLinks = internalLinks.filter(link => link.anchor.trim() && link.url.trim());
@@ -103,6 +124,25 @@ export default function ContentGenerator() {
 
       if (result.success && result.content) {
         setGeneratedContent(result.content);
+        
+        // Validate links if we're generating category with links
+        if (contentType === 'category_with_links' && validLinks.length > 0) {
+          const validation = validateLinks(result.content, validLinks);
+          setLinkValidation(validation);
+          
+          if (validation.missing.length > 0) {
+            toast({ 
+              title: `${validation.missing.length} link(s) niet verwerkt`, 
+              description: 'Bekijk de link-validatie onder de content',
+              variant: 'destructive' 
+            });
+          } else {
+            toast({ 
+              title: 'Alle links verwerkt!', 
+              description: `${validation.found.length} links zijn correct opgenomen in de tekst` 
+            });
+          }
+        }
         
         // Save to database
         const { error } = await supabase.from('generated_content').insert({
@@ -514,6 +554,55 @@ export default function ContentGenerator() {
                       <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
                         {generatedContent}
                       </pre>
+                    </div>
+                  )}
+                  
+                  {/* Link Validation Results */}
+                  {linkValidation && (linkValidation.found.length > 0 || linkValidation.missing.length > 0) && (
+                    <div className="mt-4 space-y-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Link className="h-4 w-4" />
+                        Link Validatie
+                      </h4>
+                      
+                      {linkValidation.found.length > 0 && (
+                        <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                          <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2 mb-2">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {linkValidation.found.length} link(s) correct verwerkt
+                          </p>
+                          <ul className="space-y-1">
+                            {linkValidation.found.map((link, idx) => (
+                              <li key={idx} className="text-xs text-green-600 dark:text-green-500 flex items-center gap-2">
+                                <Check className="h-3 w-3" />
+                                <span className="font-medium">{link.anchor}</span>
+                                <span className="text-green-500/70">→ {link.url}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {linkValidation.missing.length > 0 && (
+                        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                          <p className="text-sm font-medium text-destructive flex items-center gap-2 mb-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            {linkValidation.missing.length} link(s) NIET gevonden
+                          </p>
+                          <ul className="space-y-1">
+                            {linkValidation.missing.map((link, idx) => (
+                              <li key={idx} className="text-xs text-destructive/80 flex items-center gap-2">
+                                <AlertTriangle className="h-3 w-3" />
+                                <span className="font-medium">{link.anchor}</span>
+                                <span className="text-destructive/60">→ {link.url}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Tip: Genereer opnieuw of voeg deze links handmatig toe aan de content
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
