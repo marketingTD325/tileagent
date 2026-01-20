@@ -12,11 +12,12 @@ export async function analyzePageSeo(url: string, pageContent?: string) {
 
 // Content Generation API
 export async function generateContent(params: {
-  contentType: 'product_description' | 'blog_post' | 'meta_tags' | 'category_description';
+  contentType: 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
   productName: string;
   keywords?: string[];
   context?: string;
   tone?: string;
+  internalLinks?: { anchor: string; url: string }[];
 }) {
   const { data, error } = await supabase.functions.invoke('generate-content', {
     body: params

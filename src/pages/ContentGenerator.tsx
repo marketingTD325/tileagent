@@ -13,9 +13,14 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateContent } from '@/lib/api';
-import { Loader2, FileText, Copy, Star, StarOff, Sparkles } from 'lucide-react';
+import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link } from 'lucide-react';
 
-type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description';
+type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
+
+interface InternalLink {
+  anchor: string;
+  url: string;
+}
 
 interface GeneratedItem {
   id: string;
@@ -36,6 +41,7 @@ export default function ContentGenerator() {
   const [productName, setProductName] = useState('');
   const [keywords, setKeywords] = useState('');
   const [context, setContext] = useState('');
+  const [internalLinks, setInternalLinks] = useState<InternalLink[]>([{ anchor: '', url: '' }]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState('');
   const [history, setHistory] = useState<GeneratedItem[]>([]);
@@ -77,12 +83,14 @@ export default function ContentGenerator() {
 
     try {
       const keywordArray = keywords.split(',').map(k => k.trim()).filter(Boolean);
+      const validLinks = internalLinks.filter(link => link.anchor.trim() && link.url.trim());
       
       const result = await generateContent({
         contentType,
         productName,
         keywords: keywordArray.length > 0 ? keywordArray : undefined,
         context: context || undefined,
+        internalLinks: contentType === 'category_with_links' && validLinks.length > 0 ? validLinks : undefined,
       });
 
       if (result.success && result.content) {
@@ -147,8 +155,23 @@ export default function ContentGenerator() {
       blog_post: 'Blogartikel',
       meta_tags: 'Meta Tags',
       category_description: 'Categoriebeschrijving',
+      category_with_links: 'Categorie + Interne Links',
     };
     return labels[type];
+  };
+
+  const addInternalLink = () => {
+    setInternalLinks([...internalLinks, { anchor: '', url: '' }]);
+  };
+
+  const removeInternalLink = (index: number) => {
+    setInternalLinks(internalLinks.filter((_, i) => i !== index));
+  };
+
+  const updateInternalLink = (index: number, field: 'anchor' | 'url', value: string) => {
+    const updated = [...internalLinks];
+    updated[index][field] = value;
+    setInternalLinks(updated);
   };
 
   if (loading || !user) return null;
@@ -186,6 +209,7 @@ export default function ContentGenerator() {
                     <SelectContent>
                       <SelectItem value="product_description">Productbeschrijving (150-300 woorden)</SelectItem>
                       <SelectItem value="category_description">Categoriebeschrijving (700-1000 woorden)</SelectItem>
+                      <SelectItem value="category_with_links">Categorie + Interne Links (met echte URLs)</SelectItem>
                       <SelectItem value="blog_post">Blogartikel (600-900 woorden)</SelectItem>
                       <SelectItem value="meta_tags">Meta Tags (Title + Description)</SelectItem>
                     </SelectContent>
@@ -220,6 +244,54 @@ export default function ContentGenerator() {
                     rows={3}
                   />
                 </div>
+
+                {/* Internal Links Section - Only show for category_with_links */}
+                {contentType === 'category_with_links' && (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Link className="h-4 w-4" />
+                        Interne Links
+                      </Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addInternalLink}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Link toevoegen
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Voeg de interne links toe die in de tekst verwerkt moeten worden (5-6 links aanbevolen voor 700-1000 woorden)
+                    </p>
+                    <div className="space-y-2">
+                      {internalLinks.map((link, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <Input
+                            placeholder="Ankertekst (bijv. vloertegels)"
+                            value={link.anchor}
+                            onChange={(e) => updateInternalLink(index, 'anchor', e.target.value)}
+                            className="flex-1"
+                          />
+                          <Input
+                            placeholder="URL (bijv. /vloertegels/)"
+                            value={link.url}
+                            onChange={(e) => updateInternalLink(index, 'url', e.target.value)}
+                            className="flex-1"
+                          />
+                          {internalLinks.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeInternalLink(index)}
+                              className="shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <Button 
                   onClick={handleGenerate} 
