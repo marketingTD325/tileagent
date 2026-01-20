@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import tegeldepotLogo from '@/assets/tegeldepot-logo.png';
 import { useToast } from '@/hooks/use-toast';
 import { Search, TrendingUp, FileText, Users } from 'lucide-react';
 
@@ -74,11 +75,12 @@ export default function Auth() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-dark text-white p-12 flex-col justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Search className="h-8 w-8 text-primary" />
-            SEO Agent
-          </h1>
-          <p className="text-white/70 mt-2">voor Tegeldepot.nl</p>
+          <img 
+            src={tegeldepotLogo} 
+            alt="Tegel & Sanitair Depot" 
+            className="h-16 w-auto"
+          />
+          <p className="text-white/70 mt-3 text-lg">SEO Agent</p>
         </div>
         
         <div className="space-y-8">
@@ -137,9 +139,11 @@ export default function Auth() {
         <Card className="w-full max-w-md border-0 shadow-xl">
           <CardHeader className="text-center">
             <div className="lg:hidden flex justify-center mb-4">
-              <div className="p-3 rounded-xl bg-primary text-primary-foreground">
-                <Search className="h-8 w-8" />
-              </div>
+              <img 
+                src={tegeldepotLogo} 
+                alt="Tegel & Sanitair Depot" 
+                className="h-12 w-auto"
+              />
             </div>
             <CardTitle className="text-2xl">Welkom</CardTitle>
             <CardDescription>Log in of maak een account aan om verder te gaan</CardDescription>

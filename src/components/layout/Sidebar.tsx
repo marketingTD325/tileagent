@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import tegeldepotLogo from '@/assets/tegeldepot-logo.png';
 import {
   LayoutDashboard,
   FileText,
@@ -33,14 +34,12 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-2 px-6 border-b border-sidebar-border">
-          <div className="p-1.5 rounded-lg bg-sidebar-primary">
-            <Search className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <span className="font-bold text-lg">SEO Agent</span>
-            <p className="text-xs text-sidebar-foreground/60">Tegeldepot.nl</p>
-          </div>
+        <div className="flex h-20 items-center px-4 border-b border-sidebar-border">
+          <img 
+            src={tegeldepotLogo} 
+            alt="Tegel & Sanitair Depot" 
+            className="h-12 w-auto"
+          />
         </div>
 
         {/* Navigation */}
