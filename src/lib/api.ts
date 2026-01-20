@@ -56,3 +56,19 @@ export async function scrapePage(url: string) {
   if (error) throw error;
   return data;
 }
+
+// Fetch Sitemap API
+export interface SitemapUrl {
+  url: string;
+  path: string;
+  suggestedAnchor: string;
+}
+
+export async function fetchSitemap(domain: string, search?: string, limit?: number) {
+  const { data, error } = await supabase.functions.invoke('fetch-sitemap', {
+    body: { domain, search, limit }
+  });
+  
+  if (error) throw error;
+  return data as { success: boolean; urls: SitemapUrl[]; total: number; error?: string };
+}

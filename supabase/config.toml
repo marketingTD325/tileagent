@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.scrape-page]
 verify_jwt = false
+
+[functions.fetch-sitemap]
+verify_jwt = false
