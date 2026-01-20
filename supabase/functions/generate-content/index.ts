@@ -60,11 +60,30 @@ const SEO_CATEGORY_GUIDELINES = `
    - Overtuigend, aansluitend bij zoekintentie
    - Geen clickbait
 
-### E-E-A-T ELEMENTEN
-- Expertquote of tip van productspecialist
-- FAQ-blok met echte klantvragen
-- Relevante afbeeldingen met goede alt-tekst
-- Keuzehulp: "Waar moet je op letten bij het kiezen van [producttype]?"
+### E-E-A-T SIGNALEN (VERPLICHT)
+- Schrijf vanuit Tegeldepot als expert: "Bij Tegeldepot adviseren we...", "Onze tegelspecialisten raden aan..."
+- Voeg ervaringstips toe: "In onze showrooms zien we vaak dat klanten...", "Uit ervaring weten we..."
+- Gebruik concrete expertise: noem specifieke situaties, veelgemaakte fouten, professionele inzichten
+- Toon autoriteit door nuance: "Let op bij [situatie]...", "Belangrijk om te weten is..."
+
+### SFEER & BEELDSPRAAK
+- Voeg subtiele sfeervolle beschrijvingen toe (bijv. "een ovale spiegel maakt van jouw badkamer een oase van rust")
+- Wees niet té commercieel, maar wel inspirerend
+- Help de lezer zich de situatie voor te stellen
+
+### KLANT/SPECIALIST TIPS SECTIE
+- Voeg een sectie toe met praktische tips vanuit klant- of specialistperspectief
+- Bijv. "Tip van onze tegelspecialist:", "Veel van onze klanten kiezen voor..."
+
+### AFSLUITENDE CTA (VERPLICHT)
+- Sluit altijd af met een paragraaf die bezoekers richting producten leidt
+- Bijv. "Bekijk ons assortiment...", "In onze collectie vind je...", "Ontdek de mogelijkheden..."
+- Maak de vervolgstap duidelijk en laagdrempelig
+
+### FAQ SECTIE (2-3 UNIEKE VRAGEN)
+- Focus op echte klantvragen, niet generieke vragen
+- Beantwoord concreet en behulpzaam
+- Vermijd herhaling van informatie die al in de tekst staat
 `;
 
 serve(async (req) => {
@@ -317,8 +336,21 @@ CATEGORIEBESCHRIJVING MET LINKS EISEN:
 - VERPLICHT: GEBRUIK ALLE INTERNE LINKS die worden opgegeven - verwerk ze als HTML anchors
 - Keuzehulp: help de bezoeker kiezen
 - Praktische tips per situatie/ruimte
-- FAQ sectie met 3-5 echte klantvragen
+- FAQ sectie met 2-3 UNIEKE klantvragen (geen herhaling van tekst)
 - Geen keyword stuffing, wel natuurlijk zoekwoordgebruik
+
+E-E-A-T VERPLICHTINGEN:
+- Schrijf ALTIJD vanuit Tegeldepot expertise: "Bij Tegeldepot adviseren we...", "Onze specialisten zien vaak..."
+- Voeg minstens 1 tip van een specialist toe: "Tip van onze tegelexpert: ..."
+- Toon ervaring: "Veel van onze klanten kiezen voor...", "In onze showrooms merken we..."
+
+SFEER & BEELDSPRAAK:
+- Voeg subtiele sfeervolle zinnen toe die de lezer helpen visualiseren
+- Niet té commercieel, wel inspirerend
+
+AFSLUITENDE CTA (VERPLICHT):
+- Sluit AF met een paragraaf die bezoekers naar producten leidt
+- Bijv. "Bekijk ons assortiment...", "Ontdek de mogelijkheden in onze collectie..."
 
 KRITISCH - INTERNE LINKING REGELS:
 1. ELKE opgegeven link MOET als HTML anchor in de tekst verschijnen
@@ -335,14 +367,21 @@ ${context ? `Extra context: ${context}` : ''}
 === VERPLICHTE INTERNE LINKS (ALLEMAAL VERWERKEN) ===
 ${internalLinks?.length ? internalLinks.map((link: { anchor: string; url: string }, index: number) => `${index + 1}. Ankertekst: "${link.anchor}" | URL: ${link.url}`).join('\n') : 'Geen links opgegeven'}
 
-=== INSTRUCTIES ===
-1. Schrijf een H1 + intro
-2. Schrijf keuzehulp secties met H2/H3
-3. VERWERK ELKE LINK als: <a href="URL">tekst</a>
-4. Schrijf praktische tips
-5. Voeg FAQ sectie toe (3-5 vragen)
+=== VEREISTE STRUCTUUR ===
+1. <h1> + Intro (spreek vanuit Tegeldepot expertise)
+2. Keuzehulp secties met <h2>/<h3> (help bezoeker kiezen)
+3. Specialist tip sectie ("Tip van onze tegelexpert:")
+4. Praktische tips (met sfeervolle beeldspraak)
+5. VERWERK ELKE LINK als: <a href="URL">tekst</a>
+6. FAQ sectie (2-3 unieke vragen, GEEN herhaling)
+7. Afsluitende CTA paragraaf (leid naar producten)
 
-⚠️ CONTROLEER: Alle ${internalLinks?.length || 0} links moeten als <a href="...">...</a> in de tekst staan!
+⚠️ CONTROLE CHECKLIST:
+- [ ] Alle ${internalLinks?.length || 0} links als <a href="...">...</a> verwerkt
+- [ ] E-E-A-T: Expertise van Tegeldepot duidelijk
+- [ ] Specialist tip aanwezig
+- [ ] Sfeervolle beeldspraak toegevoegd
+- [ ] Afsluitende CTA naar producten
 
 Lever direct de HTML tekst.`
       }
