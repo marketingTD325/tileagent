@@ -1,9 +1,11 @@
 import { ReactNode, useState } from 'react';
 import Sidebar from './Sidebar';
+import SwipeIndicator from './SwipeIndicator';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSwipeNavigation } from '@/hooks/use-swipe-navigation';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -12,6 +14,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { canGoNext, canGoPrevious, currentIndex, totalPages } = useSwipeNavigation(isMobile);
 
   if (isMobile) {
     return (
@@ -33,9 +36,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Mobile Content */}
-        <main className="p-4">
+        <main className="p-4 pb-16">
           {children}
         </main>
+
+        {/* Swipe Indicator */}
+        <SwipeIndicator 
+          canGoPrevious={canGoPrevious}
+          canGoNext={canGoNext}
+          currentIndex={currentIndex}
+          totalPages={totalPages}
+        />
       </div>
     );
   }
