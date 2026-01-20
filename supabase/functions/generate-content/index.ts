@@ -73,7 +73,7 @@ serve(async (req) => {
   }
 
   try {
-    const { contentType, productName, keywords, context, tone } = await req.json();
+    const { contentType, productName, keywords, context, tone, internalLinks } = await req.json();
 
     if (!contentType || !productName) {
       return new Response(
@@ -185,6 +185,45 @@ Structuur:
 3. Praktische tips per toepassing
 4. Interne links naar subcategorieën (suggereer placeholders als [link naar X])
 5. FAQ sectie (3-5 vragen)
+
+Lever direct de tekst.`
+      },
+      category_with_links: {
+        system: `${TEGELDEPOT_GUIDELINES}
+${SEO_CATEGORY_GUIDELINES}
+
+Je schrijft categoriebeschrijvingen met ECHTE interne links voor Tegeldepot.nl.
+
+CATEGORIEBESCHRIJVING MET LINKS EISEN:
+- 700-1000 woorden (bruikbare inhoud, niet opvullen)
+- Sterke H1 + korte intro die direct het doel beschrijft
+- Goede H2/H3 structuur
+- GEBRUIK DE EXACTE INTERNE LINKS die worden opgegeven - verwerk ze natuurlijk in de tekst
+- Keuzehulp: help de bezoeker kiezen
+- Praktische tips per situatie/ruimte
+- FAQ sectie met 3-5 echte klantvragen
+- Geen keyword stuffing, wel natuurlijk zoekwoordgebruik
+
+INTERNE LINKING FORMAT:
+- Gebruik HTML anchor tags: <a href="URL">ankertekst</a>
+- Verwerk de links op logische plekken in de tekst
+- Maak de ankertekst onderdeel van een natuurlijke zin`,
+        user: `Schrijf een SEO-categoriebeschrijving voor Tegeldepot.nl MET de volgende interne links:
+
+Categorie: ${productName}
+${keywords?.length ? `Zoekwoorden: ${keywords.join(', ')}` : ''}
+${context ? `Extra context: ${context}` : ''}
+
+TE VERWERKEN INTERNE LINKS:
+${internalLinks?.length ? internalLinks.map((link: { anchor: string; url: string }) => `- "${link.anchor}" → ${link.url}`).join('\n') : 'Geen links opgegeven - suggereer placeholders als [link naar X]'}
+
+Structuur:
+1. H1 + korte intro (doel van de pagina)
+2. Keuzehulp secties met H2/H3 - verwerk hier de interne links
+3. Praktische tips per toepassing
+4. FAQ sectie (3-5 vragen)
+
+BELANGRIJK: Verwerk ALLE opgegeven links als echte HTML anchors (<a href="URL">tekst</a>) op natuurlijke plekken in de tekst.
 
 Lever direct de tekst.`
       }
