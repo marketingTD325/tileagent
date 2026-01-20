@@ -24,14 +24,24 @@ const navigation = [
   { name: 'Geschiedenis', href: '/history', icon: History },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({ onNavigate }: SidebarProps) {
   const location = useLocation();
   const { user, signOut } = useAuth();
 
   const initials = user?.email?.slice(0, 2).toUpperCase() || 'U';
 
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+    <aside className="h-full w-full md:fixed md:left-0 md:top-0 md:z-40 md:h-screen md:w-64 bg-sidebar text-sidebar-foreground md:border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 px-4 border-b border-sidebar-border">
@@ -54,6 +64,7 @@ export default function Sidebar() {
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={handleNavClick}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                   isActive
@@ -87,6 +98,7 @@ export default function Sidebar() {
               size="sm"
               className="flex-1 justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
               asChild
+              onClick={handleNavClick}
             >
               <Link to="/settings">
                 <Settings className="h-4 w-4 mr-2" />

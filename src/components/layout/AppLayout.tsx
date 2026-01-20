@@ -1,11 +1,45 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import Sidebar from './Sidebar';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Mobile Header */}
+        <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b bg-background px-4">
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="shrink-0">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Menu openen</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72">
+              <Sidebar onNavigate={() => setSidebarOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          <span className="font-semibold">TileForce AI</span>
+        </header>
+
+        {/* Mobile Content */}
+        <main className="p-4">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
