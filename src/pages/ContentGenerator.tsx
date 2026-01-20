@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateContent, fetchSitemap, SitemapUrl } from '@/lib/api';
-import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check, Code, Eye, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check, Code, Eye, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 
 type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
 
@@ -55,6 +55,7 @@ export default function ContentGenerator() {
   const [showSitemapPicker, setShowSitemapPicker] = useState(false);
   const [showHtmlPreview, setShowHtmlPreview] = useState(true);
   const [linkValidation, setLinkValidation] = useState<{ found: InternalLink[]; missing: InternalLink[] } | null>(null);
+  const [isReprocessingLinks, setIsReprocessingLinks] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -177,6 +178,57 @@ export default function ContentGenerator() {
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Reprocess only missing links by asking AI to inject them into existing content
+  const handleReprocessMissingLinks = async () => {
+    if (!linkValidation?.missing.length || !generatedContent) return;
+    
+    setIsReprocessingLinks(true);
+    try {
+      const result = await generateContent({
+        contentType: 'category_with_links',
+        productName,
+        keywords: keywords.split(',').map(k => k.trim()).filter(Boolean),
+        context: context || undefined,
+        internalLinks: linkValidation.missing,
+        existingContent: generatedContent,
+        mode: 'inject_links',
+      });
+
+      if (result.success && result.content) {
+        setGeneratedContent(result.content);
+        
+        // Re-validate all links
+        const allLinks = internalLinks.filter(link => link.anchor.trim() && link.url.trim());
+        const validation = validateLinks(result.content, allLinks);
+        setLinkValidation(validation);
+        
+        if (validation.missing.length === 0) {
+          toast({ 
+            title: 'Alle links verwerkt!', 
+            description: 'De ontbrekende links zijn nu toegevoegd aan de content' 
+          });
+        } else {
+          toast({ 
+            title: `${validation.missing.length} link(s) nog steeds niet verwerkt`, 
+            description: 'Probeer nogmaals of voeg handmatig toe',
+            variant: 'destructive' 
+          });
+        }
+      } else {
+        throw new Error(result.error || 'Herverwerking mislukt');
+      }
+    } catch (error: any) {
+      console.error('Reprocess error:', error);
+      toast({ 
+        title: 'Herverwerking mislukt', 
+        description: error.message || 'Er ging iets mis. Probeer het opnieuw.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsReprocessingLinks(false);
     }
   };
 
@@ -598,9 +650,30 @@ export default function ContentGenerator() {
                               </li>
                             ))}
                           </ul>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Tip: Genereer opnieuw of voeg deze links handmatig toe aan de content
-                          </p>
+                          <div className="flex items-center gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleReprocessMissingLinks}
+                              disabled={isReprocessingLinks}
+                              className="text-xs"
+                            >
+                              {isReprocessingLinks ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                  Herverwerken...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  Herverwerk ontbrekende links
+                                </>
+                              )}
+                            </Button>
+                            <span className="text-xs text-muted-foreground">
+                              of voeg handmatig toe
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
