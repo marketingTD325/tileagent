@@ -31,19 +31,26 @@ serve(async (req) => {
 
     console.log('Researching keywords for:', seedKeyword);
 
-    const systemPrompt = `Je bent een SEO keyword research specialist voor de Nederlandse markt, gespecialiseerd in tegels, badkamers en sanitair.
+    const systemPrompt = `Je bent een SEO keyword research specialist voor Tegeldepot.nl - een Nederlandse e-commerce webshop gespecialiseerd in tegels, badkamerproducten en sanitair.
 
 BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst.
 
-Genereer realistische zoekwoordsuggesties gebaseerd op:
-1. Gerelateerde zoekwoorden
-2. Long-tail variaties
-3. Vraag-gebaseerde zoekwoorden
-4. Seizoensgebonden zoekwoorden
-5. Lokale variaties (Nederlandse steden)
-6. Producttype variaties
+CONTEXT TEGELDEPOT:
+- Doelgroep: Nederlandse consumenten die tegels of badkamerproducten zoeken
+- Producten: vloertegels, wandtegels, buitentegels, badkamers, sanitair, kranen, accessoires
+- Focus: kwaliteit, keuze, service, scherpe prijzen
 
-Schat zoekvolume en moeilijkheid in op basis van je kennis van de Nederlandse markt.
+GENEREER ZOEKWOORDEN DIE:
+1. Relevant zijn voor de Nederlandse markt
+2. Aansluiten bij zoekintentie (informational, commercial, transactional)
+3. Praktisch bruikbaar zijn voor content en SEO
+
+TYPES ZOEKWOORDEN:
+- Productgerichte zoekwoorden (bijv. "betonlook tegels 60x60")
+- Vraag-gebaseerde zoekwoorden (bijv. "welke tegels voor badkamer")
+- Vergelijkingszoekwoorden (bijv. "verschil keramische en porseleinen tegels")
+- Lokale zoekwoorden (bijv. "tegels kopen amsterdam")
+- Long-tail variaties (3-5 woorden)
 
 JSON formaat:
 {
@@ -52,27 +59,33 @@ JSON formaat:
       "keyword": "zoekwoord",
       "searchVolume": 100-50000,
       "difficulty": 0-100,
-      "category": "categorie",
+      "category": "product|vraag|vergelijking|lokaal|long-tail",
       "intent": "informational|commercial|transactional|navigational",
-      "suggestions": ["gerelateerd woord 1", "gerelateerd woord 2"]
+      "contentSuggestion": "korte suggestie voor content",
+      "priority": "high|medium|low"
     }
   ],
   "categories": ["categorie1", "categorie2"],
-  "insights": "korte analyse van de zoekwoordmarkt"
+  "contentIdeas": [
+    {"title": "artikel titel", "keywords": ["kw1", "kw2"], "type": "blog|category|product"}
+  ],
+  "insights": "korte analyse en aanbevelingen"
 }`;
 
-    const userPrompt = `Genereer 15-20 relevante zoekwoorden voor de Nederlandse markt gebaseerd op:
+    const userPrompt = `Genereer 15-20 relevante zoekwoorden voor Tegeldepot.nl gebaseerd op:
 
 Basis zoekwoord: ${seedKeyword}
 ${category ? `Categorie focus: ${category}` : ''}
-Website context: Tegeldepot.nl - Nederlandse tegels en badkamer e-commerce
 
 Inclusief:
-- Exacte variaties
+- Exacte en gerelateerde variaties
 - Long-tail zoekwoorden (3-5 woorden)
-- Vraag-zoekwoorden ("hoe", "wat", "waar")
+- Vraag-zoekwoorden ("hoe kies ik", "wat is het verschil", "welke")
 - Vergelijkingszoekwoorden
-- Koopintentie zoekwoorden`;
+- Koopintentie zoekwoorden ("kopen", "bestellen", "prijs")
+- Praktische zoekwoorden ("leggen", "onderhoud", "kitten")
+
+Geef ook 3-5 content ideeën die passen bij de gevonden zoekwoorden.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -115,7 +128,6 @@ Inclusief:
       throw new Error('No content in AI response');
     }
 
-    // Parse the JSON response
     let keywordData;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -129,6 +141,7 @@ Inclusief:
       keywordData = {
         keywords: [],
         categories: [],
+        contentIdeas: [],
         insights: 'Parsing error occurred'
       };
     }

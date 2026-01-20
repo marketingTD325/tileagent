@@ -5,6 +5,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Tegeldepot Brand Guidelines for SEO Analysis
+const TEGELDEPOT_CONTEXT = `
+## CONTEXT: TEGELDEPOT.NL
+
+Tegeldepot is een Nederlandse e-commerce webshop gespecialiseerd in:
+- Tegels (vloertegels, wandtegels, buitentegels)
+- Badkamerproducten en sanitair
+- Accessoires en gereedschap
+
+### TONE OF VOICE EISEN
+- Pragmatisch en no-nonsense
+- Oplossingsgericht met keuzehulp
+- Duidelijk en concreet (geen vakjargon)
+- Autoritair vanuit expertise
+- Eerlijk en transparant
+
+### SEO CATEGORIEPAGINA STANDAARDEN
+- Sterke H1 + introductietekst
+- SEO-tekst 700-1000 woorden onder de listing
+- Interne linking: 300 woorden → 1-2 links, 600 → 3-4, 800-1000 → 5-6
+- FAQ-blok met schema.org markup
+- E-E-A-T elementen (expertise, experience, authority, trust)
+- Geen keyword stuffing
+- Meta title/description die aansluit bij zoekintentie
+`;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,24 +57,32 @@ serve(async (req) => {
 
     console.log('Analyzing SEO for URL:', url);
 
-    const systemPrompt = `Je bent een expert SEO-analist gespecialiseerd in de Nederlandse e-commerce markt, met name voor tegels en badkamerproducten. 
+    const systemPrompt = `Je bent een expert SEO-analist voor Tegeldepot.nl.
+
+${TEGELDEPOT_CONTEXT}
+
 Analyseer de gegeven pagina-inhoud en geef een gedetailleerde SEO-audit.
 
-BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst. Gebruik het exacte formaat hieronder.
+BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst.
 
-Beoordeel de pagina op:
-1. Title tag kwaliteit (lengte, zoekwoorden, uniciteit)
-2. Meta description (lengte, call-to-action, zoekwoorden)
+BEOORDEEL OP:
+1. Title tag (lengte 50-60 karakters, zoekwoord vooraan)
+2. Meta description (lengte 150-160 karakters, call-to-action)
 3. Heading structuur (H1-H6 hiërarchie)
-4. Content kwaliteit en zoekwoorddichtheid
-5. Interne linking
-6. Afbeeldingen (alt-tags)
-7. URL structuur
-8. Mobiele optimalisatie indicatoren
-9. Laadsnelheid indicatoren
-10. Schema markup mogelijkheden
+4. Content kwaliteit:
+   - Volgt het de Tegeldepot tone of voice?
+   - Is het oplossingsgericht met keuzehulp?
+   - Geen vage algemeenheden?
+   - Concrete praktische info?
+5. Interne linking (voldoende voor de tekstlengte?)
+6. E-E-A-T elementen (expertise, FAQ, etc.)
+7. Afbeeldingen (alt-tags)
+8. URL structuur
+9. Schema markup mogelijkheden
 
-Antwoord in JSON formaat:
+SCOOR STRENG: Tegeldepot wil pragmatische, no-nonsense content die de klant echt helpt.
+
+JSON formaat:
 {
   "score": 0-100,
   "title": "gevonden title",
@@ -57,27 +91,40 @@ Antwoord in JSON formaat:
     {"type": "error|warning|info", "category": "categorie", "message": "beschrijving", "priority": "high|medium|low"}
   ],
   "recommendations": [
-    {"category": "categorie", "action": "aanbevolen actie", "impact": "high|medium|low", "effort": "low|medium|high"}
+    {"category": "categorie", "action": "concrete aanbeveling in Tegeldepot stijl", "impact": "high|medium|low", "effort": "low|medium|high"}
   ],
+  "toneOfVoiceScore": {
+    "pragmatisch": 0-100,
+    "oplossingsgericht": 0-100,
+    "concreet": 0-100,
+    "autoritair": 0-100,
+    "feedback": "specifieke feedback over tone of voice"
+  },
   "technicalData": {
     "titleLength": 0,
     "metaDescriptionLength": 0,
     "h1Count": 0,
+    "h2Count": 0,
+    "h3Count": 0,
     "imageCount": 0,
     "imagesWithoutAlt": 0,
     "internalLinks": 0,
     "externalLinks": 0,
     "wordCount": 0,
-    "keywordDensity": {}
+    "estimatedReadTime": "X min",
+    "hasFaq": false,
+    "hasStructuredData": false
   }
 }`;
 
-    const userPrompt = `Analyseer deze pagina voor SEO optimalisatie:
+    const userPrompt = `Analyseer deze Tegeldepot.nl pagina voor SEO optimalisatie:
 
 URL: ${url}
 
 Pagina inhoud:
-${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}`;
+${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}
+
+Wees kritisch en concreet. Geef specifieke verbeterpunten in de Tegeldepot tone of voice.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -123,7 +170,6 @@ ${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}`
     // Parse the JSON response
     let analysis;
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
@@ -132,13 +178,13 @@ ${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}`
       }
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError, content);
-      // Return a basic analysis if parsing fails
       analysis = {
         score: 50,
         title: 'Parsing error',
         metaDescription: '',
         issues: [{ type: 'error', category: 'Analyse', message: 'Kon de analyse niet voltooien', priority: 'high' }],
         recommendations: [],
+        toneOfVoiceScore: { pragmatisch: 0, oplossingsgericht: 0, concreet: 0, autoritair: 0, feedback: '' },
         technicalData: {}
       };
     }
