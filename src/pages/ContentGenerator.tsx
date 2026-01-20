@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateContent } from '@/lib/api';
-import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link } from 'lucide-react';
+import { generateContent, fetchSitemap, SitemapUrl } from '@/lib/api';
+import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check } from 'lucide-react';
 
 type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
 
@@ -46,6 +46,13 @@ export default function ContentGenerator() {
   const [generatedContent, setGeneratedContent] = useState('');
   const [history, setHistory] = useState<GeneratedItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  
+  // Sitemap state
+  const [sitemapDomain, setSitemapDomain] = useState('tegeldepot.nl');
+  const [sitemapSearch, setSitemapSearch] = useState('');
+  const [sitemapUrls, setSitemapUrls] = useState<SitemapUrl[]>([]);
+  const [isFetchingSitemap, setIsFetchingSitemap] = useState(false);
+  const [showSitemapPicker, setShowSitemapPicker] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -174,6 +181,70 @@ export default function ContentGenerator() {
     setInternalLinks(updated);
   };
 
+  const handleFetchSitemap = async () => {
+    if (!sitemapDomain.trim()) {
+      toast({ title: 'Fout', description: 'Vul een domein in', variant: 'destructive' });
+      return;
+    }
+
+    setIsFetchingSitemap(true);
+    try {
+      const result = await fetchSitemap(sitemapDomain, sitemapSearch || undefined, 200);
+      
+      if (result.success && result.urls) {
+        setSitemapUrls(result.urls);
+        setShowSitemapPicker(true);
+        toast({ 
+          title: 'Sitemap opgehaald!', 
+          description: `${result.total} URLs gevonden` 
+        });
+      } else {
+        throw new Error(result.error || 'Kon sitemap niet ophalen');
+      }
+    } catch (error: any) {
+      console.error('Sitemap fetch error:', error);
+      toast({ 
+        title: 'Fout bij ophalen sitemap', 
+        description: error.message || 'Probeer het opnieuw',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsFetchingSitemap(false);
+    }
+  };
+
+  const addSitemapUrlAsLink = (sitemapUrl: SitemapUrl) => {
+    // Check if this URL is already added
+    const exists = internalLinks.some(link => link.url === sitemapUrl.path);
+    if (exists) {
+      toast({ title: 'Al toegevoegd', description: 'Deze URL staat al in je links', variant: 'destructive' });
+      return;
+    }
+
+    // Find first empty slot or add new
+    const emptyIndex = internalLinks.findIndex(link => !link.anchor.trim() && !link.url.trim());
+    if (emptyIndex >= 0) {
+      const updated = [...internalLinks];
+      updated[emptyIndex] = { anchor: sitemapUrl.suggestedAnchor, url: sitemapUrl.path };
+      setInternalLinks(updated);
+    } else {
+      setInternalLinks([...internalLinks, { anchor: sitemapUrl.suggestedAnchor, url: sitemapUrl.path }]);
+    }
+    
+    toast({ title: 'Link toegevoegd!', description: sitemapUrl.path });
+  };
+
+  const isUrlSelected = (url: string) => {
+    return internalLinks.some(link => link.url === url);
+  };
+
+  const filteredSitemapUrls = sitemapUrls.filter(item => {
+    if (!sitemapSearch.trim()) return true;
+    const search = sitemapSearch.toLowerCase();
+    return item.path.toLowerCase().includes(search) || 
+           item.suggestedAnchor.toLowerCase().includes(search);
+  });
+
   if (loading || !user) return null;
 
   return (
@@ -247,20 +318,102 @@ export default function ContentGenerator() {
 
                 {/* Internal Links Section - Only show for category_with_links */}
                 {contentType === 'category_with_links' && (
-                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                     <div className="flex items-center justify-between">
                       <Label className="flex items-center gap-2">
                         <Link className="h-4 w-4" />
                         Interne Links
                       </Label>
-                      <Button type="button" variant="outline" size="sm" onClick={addInternalLink}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Link toevoegen
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={() => setShowSitemapPicker(!showSitemapPicker)}
+                        >
+                          <Globe className="h-4 w-4 mr-1" />
+                          {showSitemapPicker ? 'Verberg Sitemap' : 'Uit Sitemap'}
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={addInternalLink}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Handmatig
+                        </Button>
+                      </div>
                     </div>
+                    
+                    {/* Sitemap Picker */}
+                    {showSitemapPicker && (
+                      <div className="space-y-3 p-3 border rounded-lg bg-background">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Domein (bijv. tegeldepot.nl)"
+                            value={sitemapDomain}
+                            onChange={(e) => setSitemapDomain(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button 
+                            type="button" 
+                            onClick={handleFetchSitemap}
+                            disabled={isFetchingSitemap}
+                          >
+                            {isFetchingSitemap ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Globe className="h-4 w-4 mr-1" />
+                                Ophalen
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        
+                        {sitemapUrls.length > 0 && (
+                          <>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Zoek in URLs..."
+                                value={sitemapSearch}
+                                onChange={(e) => setSitemapSearch(e.target.value)}
+                                className="pl-9"
+                              />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-1">
+                              {filteredSitemapUrls.slice(0, 50).map((item, index) => (
+                                <div 
+                                  key={index}
+                                  className={`flex items-center justify-between p-2 rounded text-sm hover:bg-muted/50 cursor-pointer transition-colors ${
+                                    isUrlSelected(item.path) ? 'bg-primary/10 border border-primary/30' : ''
+                                  }`}
+                                  onClick={() => addSitemapUrlAsLink(item)}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium truncate">{item.suggestedAnchor}</p>
+                                    <p className="text-xs text-muted-foreground truncate">{item.path}</p>
+                                  </div>
+                                  {isUrlSelected(item.path) ? (
+                                    <Check className="h-4 w-4 text-primary shrink-0 ml-2" />
+                                  ) : (
+                                    <Plus className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                                  )}
+                                </div>
+                              ))}
+                              {filteredSitemapUrls.length > 50 && (
+                                <p className="text-xs text-muted-foreground text-center py-2">
+                                  + {filteredSitemapUrls.length - 50} meer URLs (gebruik zoekfilter)
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
                     <p className="text-xs text-muted-foreground">
-                      Voeg de interne links toe die in de tekst verwerkt moeten worden (5-6 links aanbevolen voor 700-1000 woorden)
+                      {internalLinks.filter(l => l.anchor && l.url).length} links geselecteerd (5-6 aanbevolen voor 700-1000 woorden)
                     </p>
+                    
+                    {/* Selected links list */}
                     <div className="space-y-2">
                       {internalLinks.map((link, index) => (
                         <div key={index} className="flex gap-2 items-center">
