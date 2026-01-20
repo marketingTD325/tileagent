@@ -268,7 +268,10 @@ export default function ContentGenerator() {
         });
 
         loadHistory();
-        toast({ title: 'Content gegenereerd!', description: 'Je tekst is klaar en opgeslagen.' });
+        toast({ title: 'Content gegenereerd!', description: 'Kwaliteitsanalyse wordt uitgevoerd...' });
+        
+        // Auto-analyze content quality
+        autoAnalyzeContent(result.content);
       } else {
         throw new Error(result.error || 'Generatie mislukt');
       }
@@ -359,6 +362,27 @@ export default function ContentGenerator() {
         description: error.message || 'Er ging iets mis. Probeer het opnieuw.',
         variant: 'destructive' 
       });
+    } finally {
+      setIsAnalyzingContent(false);
+    }
+  };
+
+  // Auto-analyze content after generation (accepts content directly)
+  const autoAnalyzeContent = async (content: string) => {
+    setIsAnalyzingContent(true);
+    try {
+      const result = await analyzeContentQuality(content, getContentTypeLabel(contentType));
+      
+      if (result.success && result.analysis) {
+        setContentScore(result.analysis);
+        toast({ 
+          title: 'Analyse compleet!', 
+          description: `Totaalscore: ${result.analysis.overallScore.toFixed(1)}/10` 
+        });
+      }
+    } catch (error: any) {
+      console.error('Auto-analysis error:', error);
+      // Don't show error toast for auto-analysis - it's not critical
     } finally {
       setIsAnalyzingContent(false);
     }
