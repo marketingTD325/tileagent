@@ -87,25 +87,25 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             Welkom terug! Hier is een overzicht van je SEO activiteiten voor Tegeldepot.nl
           </p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {statCards.map((stat) => (
             <Card key={stat.label}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardDescription>{stat.label}</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardDescription className="text-xs md:text-sm">{stat.label}</CardDescription>
                 <stat.icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">
+              <CardContent className="pt-0">
+                <div className="text-2xl md:text-3xl font-bold">
                   {loadingStats ? '...' : stat.value}
                 </div>
               </CardContent>
@@ -115,23 +115,23 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Snelle Acties</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">Snelle Acties</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             {quickActions.map((action) => (
               <Card 
                 key={action.title} 
                 className="group hover:shadow-lg transition-all cursor-pointer border-2 hover:border-primary/20"
                 onClick={() => navigate(action.href)}
               >
-                <CardContent className="p-6 flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${action.color} text-white shrink-0`}>
-                    <action.icon className="h-6 w-6" />
+                <CardContent className="p-4 md:p-6 flex items-center gap-3 md:gap-4">
+                  <div className={`p-2.5 md:p-3 rounded-xl ${action.color} text-white shrink-0`}>
+                    <action.icon className="h-5 w-5 md:h-6 md:w-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold">{action.title}</h3>
-                    <p className="text-sm text-muted-foreground">{action.description}</p>
+                    <h3 className="font-semibold text-sm md:text-base">{action.title}</h3>
+                    <p className="text-xs md:text-sm text-muted-foreground">{action.description}</p>
                   </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
+                  <ArrowRight className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
                 </CardContent>
               </Card>
             ))}
@@ -140,26 +140,26 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Recente Activiteit</h2>
+          <h2 className="text-lg md:text-xl font-semibold mb-3 md:mb-4">Recente Activiteit</h2>
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-6">
               {recentActivity.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Nog geen activiteit. Begin met het genereren van content of het uitvoeren van een SEO audit!</p>
+                <div className="text-center py-6 md:py-8 text-muted-foreground">
+                  <Activity className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm md:text-base">Nog geen activiteit. Begin met het genereren van content of het uitvoeren van een SEO audit!</p>
                   <Button className="mt-4" onClick={() => navigate('/content')}>
                     Start met Content
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   {recentActivity.map((activity) => (
                     <div key={activity.id} className="flex items-center gap-3 pb-3 border-b last:border-0">
-                      <div className="p-2 rounded-lg bg-muted">
+                      <div className="p-2 rounded-lg bg-muted shrink-0">
                         <Activity className="h-4 w-4" />
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{activity.action_description}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{activity.action_description}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(activity.created_at).toLocaleDateString('nl-NL', {
                             day: 'numeric',

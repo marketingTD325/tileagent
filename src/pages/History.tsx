@@ -71,44 +71,54 @@ export default function History() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Geschiedenis</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Geschiedenis</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             Bekijk alle SEO audits, gegenereerde content en team activiteit
           </p>
         </div>
 
         {loadingData ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex justify-center py-10 md:py-12">
+            <Loader2 className="h-7 w-7 md:h-8 md:w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <Tabs defaultValue="activity" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="activity">Activiteit ({activity.length})</TabsTrigger>
-              <TabsTrigger value="audits">SEO Audits ({audits.length})</TabsTrigger>
-              <TabsTrigger value="content">Content ({content.length})</TabsTrigger>
+          <Tabs defaultValue="activity" className="space-y-4 md:space-y-6">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="activity" className="text-xs md:text-sm">
+                <span className="hidden sm:inline">Activiteit</span>
+                <span className="sm:hidden">Log</span>
+                <span className="ml-1">({activity.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="audits" className="text-xs md:text-sm">
+                <span className="hidden sm:inline">SEO </span>Audits
+                <span className="ml-1">({audits.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="content" className="text-xs md:text-sm">
+                Content
+                <span className="ml-1">({content.length})</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="activity">
               <Card>
-                <CardHeader>
-                  <CardTitle>Team Activiteit</CardTitle>
+                <CardHeader className="pb-2 md:pb-4">
+                  <CardTitle className="text-lg">Team Activiteit</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {activity.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nog geen activiteit</p>
+                    <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">Nog geen activiteit</p>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 md:space-y-4">
                       {activity.map((item) => (
-                        <div key={item.id} className="flex items-start gap-4 pb-4 border-b last:border-0">
-                          <div className="p-2 rounded-lg bg-muted">
+                        <div key={item.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
+                          <div className="p-1.5 md:p-2 rounded-lg bg-muted shrink-0">
                             {getActivityIcon(item.action_type)}
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{item.action_description}</p>
-                            <p className="text-sm text-muted-foreground">{formatDate(item.created_at)}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{item.action_description}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(item.created_at)}</p>
                           </div>
                         </div>
                       ))}
@@ -120,26 +130,26 @@ export default function History() {
 
             <TabsContent value="audits">
               <Card>
-                <CardHeader>
-                  <CardTitle>SEO Audits</CardTitle>
+                <CardHeader className="pb-2 md:pb-4">
+                  <CardTitle className="text-lg">SEO Audits</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {audits.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nog geen audits</p>
+                    <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">Nog geen audits</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       {audits.map((audit) => (
-                        <div key={audit.id} className="flex items-center justify-between p-4 rounded-lg border">
-                          <div className="flex items-center gap-4">
-                            <div className={`text-2xl font-bold ${getScoreColor(audit.score)}`}>
+                        <div key={audit.id} className="flex items-center justify-between p-3 md:p-4 rounded-lg border gap-2">
+                          <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
+                            <div className={`text-xl md:text-2xl font-bold shrink-0 ${getScoreColor(audit.score)}`}>
                               {audit.score}
                             </div>
-                            <div>
-                              <p className="font-medium truncate max-w-md">{audit.url}</p>
-                              <p className="text-sm text-muted-foreground">{formatDate(audit.created_at)}</p>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate">{audit.url}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(audit.created_at)}</p>
                             </div>
                           </div>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="shrink-0 text-xs">
                             {(audit.issues as any[])?.length || 0} issues
                           </Badge>
                         </div>
@@ -152,21 +162,21 @@ export default function History() {
 
             <TabsContent value="content">
               <Card>
-                <CardHeader>
-                  <CardTitle>Gegenereerde Content</CardTitle>
+                <CardHeader className="pb-2 md:pb-4">
+                  <CardTitle className="text-lg">Gegenereerde Content</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {content.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">Nog geen content</p>
+                    <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">Nog geen content</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       {content.map((item) => (
-                        <div key={item.id} className="p-4 rounded-lg border">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium">{item.title}</p>
-                            <Badge>{item.content_type.replace('_', ' ')}</Badge>
+                        <div key={item.id} className="p-3 md:p-4 rounded-lg border">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 mb-2">
+                            <p className="font-medium text-sm md:text-base truncate">{item.title}</p>
+                            <Badge className="self-start text-xs">{item.content_type.replace('_', ' ')}</Badge>
                           </div>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p>
+                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">{item.content}</p>
                           <p className="text-xs text-muted-foreground mt-2">{formatDate(item.created_at)}</p>
                         </div>
                       ))}

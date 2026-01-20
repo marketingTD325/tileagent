@@ -161,23 +161,24 @@ export default function Competitors() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Concurrent Analyse</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl md:text-3xl font-bold">Concurrent Analyse</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
               Analyseer en vergelijk SEO-prestaties van concurrenten
             </p>
           </div>
           
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
-                Concurrent Toevoegen
+                <span className="sm:hidden">Toevoegen</span>
+                <span className="hidden sm:inline">Concurrent Toevoegen</span>
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Nieuwe Concurrent</DialogTitle>
               </DialogHeader>
@@ -208,10 +209,10 @@ export default function Competitors() {
 
         {competitors.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center">
-              <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">Nog geen concurrenten</h3>
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="py-8 md:py-12 text-center">
+              <Users className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-base md:text-lg font-semibold mb-2">Nog geen concurrenten</h3>
+              <p className="text-sm text-muted-foreground mb-4">
                 Voeg concurrenten toe om hun SEO-prestaties te analyseren
               </p>
               <Button onClick={() => setDialogOpen(true)}>
@@ -221,23 +222,23 @@ export default function Competitors() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {competitors.map((competitor) => {
               const analysis = getLatestAnalysis(competitor);
               
               return (
                 <Card key={competitor.id}>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-2 md:pb-3">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{competitor.name}</CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          {competitor.domain}
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base md:text-lg truncate">{competitor.name}</CardTitle>
+                        <CardDescription className="flex items-center gap-1 text-xs md:text-sm">
+                          <span className="truncate">{competitor.domain}</span>
                           <a 
                             href={`https://${competitor.domain}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="hover:text-primary"
+                            className="hover:text-primary shrink-0"
                           >
                             <ExternalLink className="h-3 w-3" />
                           </a>
@@ -246,59 +247,60 @@ export default function Competitors() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-8 w-8 shrink-0"
                         onClick={() => deleteCompetitor(competitor.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 md:space-y-4">
                     {analysis ? (
                       <>
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm text-muted-foreground">Visibility Score</span>
-                            <span className="font-bold">{analysis.visibilityScore}</span>
+                            <span className="text-xs md:text-sm text-muted-foreground">Visibility Score</span>
+                            <span className="font-bold text-sm md:text-base">{analysis.visibilityScore}</span>
                           </div>
                           <Progress value={analysis.visibilityScore} />
                         </div>
                         
                         {analysis.contentGaps?.slice(0, 2).map((gap, i) => (
-                          <div key={i} className="flex items-start gap-2 text-sm">
-                            <AlertTriangle className="h-4 w-4 text-accent shrink-0 mt-0.5" />
-                            <span>{gap.topic}</span>
+                          <div key={i} className="flex items-start gap-2 text-xs md:text-sm">
+                            <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-accent shrink-0 mt-0.5" />
+                            <span className="line-clamp-1">{gap.topic}</span>
                           </div>
                         ))}
                         
                         <Button 
                           variant="outline" 
-                          className="w-full"
+                          className="w-full text-sm"
                           onClick={() => setSelectedAnalysis(analysis)}
                         >
                           Bekijk Volledige Analyse
                         </Button>
                       </>
                     ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">
+                      <p className="text-xs md:text-sm text-muted-foreground text-center py-3 md:py-4">
                         Nog niet geanalyseerd
                       </p>
                     )}
                     
                     <Button 
-                      className="w-full"
+                      className="w-full text-sm"
                       onClick={() => analyzeCompetitorFn(competitor)}
                       disabled={isAnalyzing === competitor.id}
                     >
                       {isAnalyzing === competitor.id ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Analyseren...
+                          <span className="hidden sm:inline">Analyseren...</span>
+                          <span className="sm:hidden">...</span>
                         </>
                       ) : (
                         <>
                           <TrendingUp className="h-4 w-4 mr-2" />
-                          {analysis ? 'Opnieuw Analyseren' : 'Analyseren'}
+                          {analysis ? 'Opnieuw' : 'Analyseren'}
                         </>
                       )}
                     </Button>
