@@ -73,7 +73,7 @@ serve(async (req) => {
   }
 
   try {
-    const { contentType, productName, keywords, context, tone, internalLinks } = await req.json();
+    const { contentType, productName, keywords, context, tone, internalLinks, existingContent, mode } = await req.json();
 
     if (!contentType || !productName) {
       return new Response(
@@ -87,6 +87,122 @@ serve(async (req) => {
       console.error('LOVABLE_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle inject_links mode - add missing links to existing content
+    if (mode === 'inject_links' && existingContent && internalLinks?.length) {
+      console.log('Injecting', internalLinks.length, 'missing links into existing content');
+      
+      const injectPrompt = {
+        system: `${TEGELDEPOT_GUIDELINES}
+
+Je bent een SEO-specialist die interne links toevoegt aan bestaande content.
+
+TAAK:
+- Je krijgt een bestaande HTML-tekst en een lijst met links die MOETEN worden toegevoegd
+- Verwerk ELKE link als een HTML anchor: <a href="URL">ankertekst</a>
+- Plaats de links op logische, natuurlijke plekken in de tekst
+- Pas de ankertekst aan zodat deze natuurlijk in de zin past
+- Behoud de rest van de content exact zoals het is
+- Voeg GEEN nieuwe content toe, alleen de links
+
+KRITISCH:
+- ALLE opgegeven links MOETEN in de output verschijnen
+- Gebruik het exacte URL-pad zoals opgegeven
+- De output moet valide HTML zijn`,
+        user: `Voeg de volgende interne links toe aan deze content:
+
+=== LINKS OM TOE TE VOEGEN ===
+${internalLinks.map((link: { anchor: string; url: string }, index: number) => `${index + 1}. "${link.anchor}" → ${link.url}`).join('\n')}
+
+=== BESTAANDE CONTENT ===
+${existingContent}
+
+=== INSTRUCTIES ===
+1. Zoek voor elke link een logische plek in de tekst
+2. Voeg de link toe als <a href="URL">tekst</a>
+3. Pas de ankertekst aan zodat het natuurlijk leest in de context
+4. Geef de VOLLEDIGE content terug met de links erin verwerkt
+
+⚠️ ALLE ${internalLinks.length} links MOETEN als <a href="...">...</a> in de output staan!`
+      };
+
+      // Use the same retry logic for inject mode
+      const maxRetries = 3;
+      let lastError: Error | null = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`AI inject request attempt ${attempt}/${maxRetries}`);
+          
+          const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-3-flash-preview',
+              messages: [
+                { role: 'system', content: injectPrompt.system },
+                { role: 'user', content: injectPrompt.user }
+              ],
+              temperature: 0.3, // Lower temperature for more consistent output
+            }),
+          });
+
+          if (!response.ok) {
+            if (response.status === 429) {
+              return new Response(
+                JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }),
+                { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            if (response.status === 402) {
+              return new Response(
+                JSON.stringify({ error: 'Payment required, please add funds to your workspace.' }),
+                { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            const errorText = await response.text();
+            console.error('AI gateway error:', response.status, errorText);
+            throw new Error(`AI gateway error: ${response.status}`);
+          }
+
+          const aiResponse = await response.json();
+          const content = aiResponse.choices?.[0]?.message?.content;
+
+          if (!content) {
+            throw new Error('No content in AI response');
+          }
+
+          console.log('Links injected successfully');
+
+          return new Response(
+            JSON.stringify({ success: true, content }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          console.error(`Inject attempt ${attempt} failed:`, lastError.message);
+          
+          if (lastError.message.includes('Connection reset') || 
+              lastError.message.includes('connection') ||
+              lastError.message.includes('network')) {
+            if (attempt < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+              continue;
+            }
+          }
+          break;
+        }
+      }
+
+      console.error('Link injection error after retries:', lastError);
+      return new Response(
+        JSON.stringify({ error: lastError?.message || 'Link injection failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

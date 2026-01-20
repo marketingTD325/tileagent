@@ -18,6 +18,8 @@ export async function generateContent(params: {
   context?: string;
   tone?: string;
   internalLinks?: { anchor: string; url: string }[];
+  existingContent?: string;
+  mode?: 'full' | 'inject_links';
 }) {
   const { data, error } = await supabase.functions.invoke('generate-content', {
     body: params
