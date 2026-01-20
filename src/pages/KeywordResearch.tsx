@@ -153,39 +153,39 @@ export default function KeywordResearch() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Keyword Research</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold">Keyword Research</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">
             Vind relevante zoekwoorden voor de Nederlandse tegels en badkamer markt
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Search Form */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex gap-4">
+              <CardContent className="pt-4 md:pt-6">
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                   <div className="flex-1">
                     <Input
-                      placeholder="bijv. betonlook tegels, badkamer renovatie, vloertegels"
+                      placeholder="bijv. betonlook tegels, badkamer renovatie"
                       value={seedKeyword}
                       onChange={(e) => setSeedKeyword(e.target.value)}
-                      className="h-12"
+                      className="h-10 md:h-12 text-sm md:text-base"
                     />
                   </div>
                   <Input
                     placeholder="Categorie (optioneel)"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-48 h-12"
+                    className="w-full sm:w-36 md:w-48 h-10 md:h-12 text-sm"
                   />
                   <Button 
                     onClick={handleResearch} 
                     disabled={isResearching}
                     size="lg"
-                    className="h-12"
+                    className="h-10 md:h-12"
                   >
                     {isResearching ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -200,16 +200,17 @@ export default function KeywordResearch() {
             {/* Results */}
             {keywords.length > 0 && (
               <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Zoekwoorden ({keywords.length})</CardTitle>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <CardTitle className="text-lg">Zoekwoorden ({keywords.length})</CardTitle>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setSortBy(sortBy === 'volume' ? 'difficulty' : 'volume')}
+                      className="text-xs sm:text-sm"
                     >
-                      <ArrowUpDown className="h-4 w-4 mr-2" />
-                      Sorteer op {sortBy === 'volume' ? 'moeilijkheid' : 'volume'}
+                      <ArrowUpDown className="h-4 w-4 mr-1 md:mr-2" />
+                      <span className="hidden sm:inline">Sorteer op </span>{sortBy === 'volume' ? 'moeilijkheid' : 'volume'}
                     </Button>
                   </div>
                 </CardHeader>
@@ -218,27 +219,28 @@ export default function KeywordResearch() {
                     {sortedKeywords.map((kw, i) => (
                       <div 
                         key={i}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-2 md:p-3 rounded-lg border hover:bg-muted/50 gap-2"
                       >
-                        <div className="flex-1">
-                          <p className="font-medium">{kw.keyword}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant={getIntentColor(kw.intent)}>{kw.intent}</Badge>
-                            <Badge variant="outline">{kw.category}</Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm md:text-base truncate">{kw.keyword}</p>
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                            <Badge variant={getIntentColor(kw.intent)} className="text-xs">{kw.intent}</Badge>
+                            <Badge variant="outline" className="text-xs">{kw.category}</Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <p className="font-bold">{kw.searchVolume.toLocaleString()}</p>
+                        <div className="flex items-center justify-between sm:justify-end gap-3 md:gap-4">
+                          <div className="text-left sm:text-right">
+                            <p className="font-bold text-sm md:text-base">{kw.searchVolume.toLocaleString()}</p>
                             <p className="text-xs text-muted-foreground">maand</p>
                           </div>
-                          <div className={`px-3 py-1 rounded-full text-sm font-medium ${getDifficultyColor(kw.difficulty)}`}>
+                          <div className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium ${getDifficultyColor(kw.difficulty)}`}>
                             {kw.difficulty}
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => saveKeyword(kw)}
+                            className="h-8 w-8"
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -253,21 +255,21 @@ export default function KeywordResearch() {
             {/* Content Ideas */}
             {contentIdeas.length > 0 && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <Lightbulb className="h-5 w-5 text-accent" />
                     Content Ideeën
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-2 md:space-y-3">
                     {contentIdeas.map((idea, i) => (
-                      <div key={i} className="p-4 rounded-lg border">
-                        <p className="font-medium">{idea.title}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge>{idea.type}</Badge>
+                      <div key={i} className="p-3 md:p-4 rounded-lg border">
+                        <p className="font-medium text-sm md:text-base">{idea.title}</p>
+                        <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-2">
+                          <Badge className="text-xs">{idea.type}</Badge>
                           {idea.keywords?.slice(0, 3).map((kw, j) => (
-                            <Badge key={j} variant="outline">{kw}</Badge>
+                            <Badge key={j} variant="outline" className="text-xs">{kw}</Badge>
                           ))}
                         </div>
                       </div>
@@ -280,37 +282,37 @@ export default function KeywordResearch() {
             {/* Insights */}
             {insights && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Inzichten</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Inzichten</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{insights}</p>
+                  <p className="text-sm md:text-base text-muted-foreground">{insights}</p>
                 </CardContent>
               </Card>
             )}
           </div>
 
           {/* Saved Keywords Sidebar */}
-          <div>
+          <div className="lg:order-none order-first">
             <Card>
-              <CardHeader>
-                <CardTitle>Opgeslagen Zoekwoorden</CardTitle>
-                <CardDescription>{savedKeywords.length} zoekwoorden</CardDescription>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Opgeslagen Zoekwoorden</CardTitle>
+                <CardDescription className="text-xs md:text-sm">{savedKeywords.length} zoekwoorden</CardDescription>
               </CardHeader>
               <CardContent>
                 {savedKeywords.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-8">
+                  <p className="text-center text-muted-foreground py-6 md:py-8 text-sm">
                     Nog geen zoekwoorden opgeslagen
                   </p>
                 ) : (
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[300px] lg:max-h-[500px] overflow-y-auto">
                     {savedKeywords.map((kw) => (
                       <div 
                         key={kw.id}
                         className="flex items-center justify-between p-2 rounded-lg border"
                       >
-                        <div>
-                          <p className="font-medium text-sm">{kw.keyword}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">{kw.keyword}</p>
                           <p className="text-xs text-muted-foreground">
                             {kw.search_volume?.toLocaleString() || '?'}/maand
                           </p>
@@ -318,7 +320,7 @@ export default function KeywordResearch() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 shrink-0"
                           onClick={() => removeKeyword(kw.id)}
                         >
                           <Trash2 className="h-4 w-4" />
