@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateContent, fetchSitemap, SitemapUrl } from '@/lib/api';
-import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check } from 'lucide-react';
+import { Loader2, FileText, Copy, Star, StarOff, Sparkles, Plus, Trash2, Link, Globe, Search, Check, Code, Eye } from 'lucide-react';
 
 type ContentType = 'product_description' | 'blog_post' | 'meta_tags' | 'category_description' | 'category_with_links';
 
@@ -53,6 +53,7 @@ export default function ContentGenerator() {
   const [sitemapUrls, setSitemapUrls] = useState<SitemapUrl[]>([]);
   const [isFetchingSitemap, setIsFetchingSitemap] = useState(false);
   const [showSitemapPicker, setShowSitemapPicker] = useState(false);
+  const [showHtmlPreview, setShowHtmlPreview] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -470,17 +471,51 @@ export default function ContentGenerator() {
             {/* Generated Content */}
             {generatedContent && (
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
                   <CardTitle>Gegenereerde Content</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent)}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Kopieer
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center border rounded-lg p-1 bg-muted/30">
+                      <Button 
+                        variant={showHtmlPreview ? "secondary" : "ghost"} 
+                        size="sm" 
+                        onClick={() => setShowHtmlPreview(true)}
+                        className="h-7 px-2"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Preview
+                      </Button>
+                      <Button 
+                        variant={!showHtmlPreview ? "secondary" : "ghost"} 
+                        size="sm" 
+                        onClick={() => setShowHtmlPreview(false)}
+                        className="h-7 px-2"
+                      >
+                        <Code className="h-4 w-4 mr-1" />
+                        Broncode
+                      </Button>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(generatedContent)}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Kopieer
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="prose prose-sm max-w-none dark:prose-invert bg-muted/50 p-4 rounded-lg whitespace-pre-wrap">
-                    {generatedContent}
-                  </div>
+                  {showHtmlPreview ? (
+                    <div 
+                      className="prose prose-sm max-w-none dark:prose-invert bg-muted/30 p-6 rounded-lg
+                        prose-headings:text-foreground prose-p:text-foreground/90
+                        prose-a:text-primary prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-primary/80
+                        prose-strong:text-foreground prose-ul:text-foreground/90 prose-li:text-foreground/90"
+                      dangerouslySetInnerHTML={{ __html: generatedContent }}
+                    />
+                  ) : (
+                    <div className="bg-muted/50 p-4 rounded-lg overflow-x-auto">
+                      <pre className="text-sm font-mono whitespace-pre-wrap break-words text-foreground/80">
+                        {generatedContent}
+                      </pre>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
