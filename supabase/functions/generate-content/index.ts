@@ -237,52 +237,86 @@ Lever direct de tekst.`
       );
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: promptConfig.system },
-          { role: 'user', content: promptConfig.user }
-        ],
-        temperature: 0.7,
-      }),
-    });
+    // Retry logic for transient connection errors
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`AI request attempt ${attempt}/${maxRetries}`);
+        
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-3-flash-preview',
+            messages: [
+              { role: 'system', content: promptConfig.system },
+              { role: 'user', content: promptConfig.user }
+            ],
+            temperature: 0.7,
+          }),
+        });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+        if (!response.ok) {
+          if (response.status === 429) {
+            return new Response(
+              JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          if (response.status === 402) {
+            return new Response(
+              JSON.stringify({ error: 'Payment required, please add funds to your workspace.' }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          const errorText = await response.text();
+          console.error('AI gateway error:', response.status, errorText);
+          throw new Error(`AI gateway error: ${response.status}`);
+        }
+
+        const aiResponse = await response.json();
+        const content = aiResponse.choices?.[0]?.message?.content;
+
+        if (!content) {
+          throw new Error('No content in AI response');
+        }
+
+        console.log('Content generated successfully');
+
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ success: true, content }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        console.error(`Attempt ${attempt} failed:`, lastError.message);
+        
+        // Only retry on connection errors
+        if (lastError.message.includes('Connection reset') || 
+            lastError.message.includes('connection') ||
+            lastError.message.includes('network')) {
+          if (attempt < maxRetries) {
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        
+        // Don't retry on other errors
+        break;
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required, please add funds to your workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content in AI response');
-    }
-
-    console.log('Content generated successfully');
-
+    // All retries failed
+    console.error('Content generation error after retries:', lastError);
     return new Response(
-      JSON.stringify({ success: true, content }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: lastError?.message || 'Content generation failed' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Content generation error:', error);
