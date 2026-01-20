@@ -198,34 +198,37 @@ CATEGORIEBESCHRIJVING MET LINKS EISEN:
 - 700-1000 woorden (bruikbare inhoud, niet opvullen)
 - Sterke H1 + korte intro die direct het doel beschrijft
 - Goede H2/H3 structuur
-- GEBRUIK DE EXACTE INTERNE LINKS die worden opgegeven - verwerk ze natuurlijk in de tekst
+- VERPLICHT: GEBRUIK ALLE INTERNE LINKS die worden opgegeven - verwerk ze als HTML anchors
 - Keuzehulp: help de bezoeker kiezen
 - Praktische tips per situatie/ruimte
 - FAQ sectie met 3-5 echte klantvragen
 - Geen keyword stuffing, wel natuurlijk zoekwoordgebruik
 
-INTERNE LINKING FORMAT:
-- Gebruik HTML anchor tags: <a href="URL">ankertekst</a>
-- Verwerk de links op logische plekken in de tekst
-- Maak de ankertekst onderdeel van een natuurlijke zin`,
-        user: `Schrijf een SEO-categoriebeschrijving voor Tegeldepot.nl MET de volgende interne links:
+KRITISCH - INTERNE LINKING REGELS:
+1. ELKE opgegeven link MOET als HTML anchor in de tekst verschijnen
+2. Format: <a href="/pad/naar/pagina">ankertekst</a>
+3. Verwerk links op logische plekken (in keuzehulp, tips, of beschrijvende tekst)
+4. De ankertekst mag aangepast worden om natuurlijk te lezen, maar de URL moet exact blijven
+5. Controleer dat ALLE links zijn verwerkt voordat je de tekst aflevert`,
+        user: `Schrijf een SEO-categoriebeschrijving voor Tegeldepot.nl.
 
 Categorie: ${productName}
 ${keywords?.length ? `Zoekwoorden: ${keywords.join(', ')}` : ''}
 ${context ? `Extra context: ${context}` : ''}
 
-TE VERWERKEN INTERNE LINKS:
-${internalLinks?.length ? internalLinks.map((link: { anchor: string; url: string }) => `- "${link.anchor}" → ${link.url}`).join('\n') : 'Geen links opgegeven - suggereer placeholders als [link naar X]'}
+=== VERPLICHTE INTERNE LINKS (ALLEMAAL VERWERKEN) ===
+${internalLinks?.length ? internalLinks.map((link: { anchor: string; url: string }, index: number) => `${index + 1}. Ankertekst: "${link.anchor}" | URL: ${link.url}`).join('\n') : 'Geen links opgegeven'}
 
-Structuur:
-1. H1 + korte intro (doel van de pagina)
-2. Keuzehulp secties met H2/H3 - verwerk hier de interne links
-3. Praktische tips per toepassing
-4. FAQ sectie (3-5 vragen)
+=== INSTRUCTIES ===
+1. Schrijf een H1 + intro
+2. Schrijf keuzehulp secties met H2/H3
+3. VERWERK ELKE LINK als: <a href="URL">tekst</a>
+4. Schrijf praktische tips
+5. Voeg FAQ sectie toe (3-5 vragen)
 
-BELANGRIJK: Verwerk ALLE opgegeven links als echte HTML anchors (<a href="URL">tekst</a>) op natuurlijke plekken in de tekst.
+⚠️ CONTROLEER: Alle ${internalLinks?.length || 0} links moeten als <a href="...">...</a> in de tekst staan!
 
-Lever direct de tekst.`
+Lever direct de HTML tekst.`
       }
     };
 
