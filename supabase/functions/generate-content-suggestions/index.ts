@@ -82,43 +82,94 @@ serve(async (req) => {
     const currentSeason = getSeasonNL();
 
     // Build AI prompt
-    const prompt = `Je bent een SEO-expert voor tegeldepot.nl, een Nederlandse webshop voor tegels en badkamerproducten.
+    const prompt = `Je bent een senior SEO-strateeg voor tegeldepot.nl, een Nederlandse webshop voor tegels en badkamerproducten.
 
-Analyseer de volgende data en genereer 8-12 concrete content-suggesties voor de komende maand.
+BELANGRIJK: Het is nu ${currentMonth} ${currentYear}. Gebruik ALLEEN ${currentYear} in alle titels en content. Gebruik NOOIT oude jaartallen.
 
-BELANGRIJK: Het is nu ${currentMonth} ${currentYear}. Gebruik ALLEEN ${currentYear} in alle titels en content. Gebruik NOOIT oude jaartallen zoals 2024 of 2025.
+## Jouw Taak
+Analyseer de data en genereer 8-12 strategische content-suggesties die maximale SEO-impact opleveren.
 
-## Content Gaps van Concurrenten:
-${contentGaps.slice(0, 15).map(g => `- ${g.topic}: ${g.description} (kans: ${g.opportunity})`).join('\n')}
+## Beschikbare Data
 
-## Keywords waar we niet top 10 op staan:
-${(keywords || []).slice(0, 15).map(k => `- "${k.keyword}" (volume: ${k.search_volume}, huidige positie: ${k.position || 'niet gevonden'})`).join('\n')}
+### Content Gaps van Concurrenten:
+${contentGaps.slice(0, 15).map(g => `- ${g.topic}: ${g.description} (kans: ${g.opportunity})`).join('\n') || '- Geen data beschikbaar'}
 
-## Top Keywords van Concurrenten:
-${topKeywords.slice(0, 15).map(k => `- "${k.keyword}" (geschat volume: ${k.searchVolume})`).join('\n')}
+### Keywords waar we niet top 10 op staan:
+${(keywords || []).slice(0, 15).map(k => `- "${k.keyword}" (volume: ${k.search_volume}, positie: ${k.position || 'niet gevonden'})`).join('\n') || '- Geen data beschikbaar'}
 
-## Seizoenscontext:
-Het is nu ${currentMonth} ${currentYear} (${currentSeason}). Denk aan seizoensgebonden content zoals:
+### Top Keywords van Concurrenten:
+${topKeywords.slice(0, 15).map(k => `- "${k.keyword}" (geschat volume: ${k.searchVolume})`).join('\n') || '- Geen data beschikbaar'}
+
+## Seizoenscontext
+${currentMonth} ${currentYear} (${currentSeason}):
 - Voorjaar: badkamer renovatie, voorjaarsschoonmaak
-- Zomer: buitentegels, terras
-- Herfst: voorbereiding winter, binnen verbouwen
-- Winter: inspiratie, planning nieuw jaar
+- Zomer: buitentegels, terras aanleggen
+- Herfst: binnen verbouwen, voorbereiding winter
+- Winter: inspiratie verzamelen, planning nieuw jaar
 
-## Output Format:
-Genereer een JSON array met suggesties. Elke suggestie heeft:
-- title: Korte titel voor de content
-- description: 1-2 zinnen wat de content moet bevatten
+## Analyse Framework
+
+### 1. Search Intent Classificatie
+Classificeer elk keyword/topic naar zoekintentie:
+- **Informational**: Gebruiker zoekt kennis ("hoe tegels leggen", "welke tegel voor badkamer")
+- **Commercial Investigation**: Gebruiker vergelijkt opties ("beste badkamertegels", "tegels vergelijken")
+- **Transactional**: Gebruiker wil kopen ("tegels kopen", "badkamertegels bestellen")
+- **Navigational**: Gebruiker zoekt specifiek merk/product
+
+### 2. Content Format Matching
+Koppel het juiste format aan de intentie:
+- **How-to Guide**: Voor "hoe..." vragen, stapsgewijze uitleg
+- **Comparison/Versus**: Voor "beste...", "vs", vergelijkingsvragen
+- **Listicle**: Voor "X tips", "X ideeën" onderwerpen
+- **Buying Guide**: Voor aankoop-georiënteerde zoektermen
+- **Inspiration Gallery**: Voor visuele onderwerpen ("badkamer inspiratie")
+- **FAQ Page**: Voor veel gestelde vragen clusters
+- **Category Description**: Voor product-gerelateerde hoofdtermen
+
+### 3. Featured Snippet Kansen
+Identificeer kansen voor Google featured snippets:
+- **Paragraph snippet**: Definitie-vragen ("wat is...")
+- **List snippet**: Stappen of opsommingen ("hoe...", "tips")
+- **Table snippet**: Vergelijkingen, specificaties
+- Markeer als featured_snippet_type in je output
+
+### 4. ROI & Effort Scoring
+Bereken voor elke suggestie:
+- **effort_score** (1-10): Hoeveel werk kost het?
+  - 1-3: Korte blogpost, simpele update
+  - 4-6: Uitgebreide guide, meerdere secties
+  - 7-10: Diepgaand onderzoek, veel visuals nodig
+- **roi_potential** (1-10): Wat is de verwachte opbrengst?
+  - Factoren: zoekvolume, commerciële waarde, huidige concurrentie, seizoensrelevantie
+- **priority_score**: (roi_potential * 2 - effort_score) / 2, afgerond
+
+### 5. Interne Linking Strategie
+Suggereer per content-item:
+- Welke bestaande categorieën/producten gelinkt moeten worden
+- Welke gerelateerde content onderling gelinkt moet worden (content clusters)
+
+## Output Vereisten
+Elke suggestie moet bevatten:
+- title: Pakkende titel met ${currentYear} waar relevant
+- description: 2-3 zinnen over inhoud en aanpak
 - content_type: "category" | "blog" | "landing_page" | "guide"
-- target_keywords: array van 2-4 relevante keywords
+- content_format: "how-to" | "comparison" | "listicle" | "buying-guide" | "inspiration" | "faq" | "category-description"
+- search_intent: "informational" | "commercial" | "transactional" | "navigational"
+- target_keywords: array van 3-5 relevante keywords
 - priority: "high" | "medium" | "low"
-- opportunity_score: 1-100 (hoe groot is de kans op succes)
-- reasoning: Waarom deze content belangrijk is
+- opportunity_score: 1-100 (overall kans op succes)
+- effort_score: 1-10 (benodigde effort)
+- roi_potential: 1-10 (verwachte ROI)
+- featured_snippet_type: "paragraph" | "list" | "table" | null
+- internal_links: array van relevante interne link-suggesties (categorieën/producten)
+- reasoning: Strategische onderbouwing van deze suggestie
 
-Focus op:
-1. Content gaps waar concurrenten sterk zijn maar wij niet
-2. Keywords met hoog volume waar we niet goed op ranken
-3. Seizoensgebonden kansen
-4. Long-tail variaties van populaire keywords`;
+## Prioritering
+Sorteer output op impact:
+1. Hoge ROI + lage effort eerst
+2. Featured snippet kansen
+3. Seizoensrelevante content
+4. Content gaps waar concurrenten scoren`;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -155,12 +206,18 @@ Focus op:
                       title: { type: 'string' },
                       description: { type: 'string' },
                       content_type: { type: 'string', enum: ['category', 'blog', 'landing_page', 'guide'] },
+                      content_format: { type: 'string', enum: ['how-to', 'comparison', 'listicle', 'buying-guide', 'inspiration', 'faq', 'category-description'] },
+                      search_intent: { type: 'string', enum: ['informational', 'commercial', 'transactional', 'navigational'] },
                       target_keywords: { type: 'array', items: { type: 'string' } },
                       priority: { type: 'string', enum: ['high', 'medium', 'low'] },
                       opportunity_score: { type: 'number' },
+                      effort_score: { type: 'number' },
+                      roi_potential: { type: 'number' },
+                      featured_snippet_type: { type: 'string', enum: ['paragraph', 'list', 'table'], nullable: true },
+                      internal_links: { type: 'array', items: { type: 'string' } },
                       reasoning: { type: 'string' }
                     },
-                    required: ['title', 'description', 'content_type', 'target_keywords', 'priority', 'opportunity_score']
+                    required: ['title', 'description', 'content_type', 'content_format', 'search_intent', 'target_keywords', 'priority', 'opportunity_score', 'effort_score', 'roi_potential']
                   }
                 }
               },
@@ -232,7 +289,16 @@ Focus op:
         priority: s.priority,
         opportunity_score: s.opportunity_score,
         source: 'ai_suggestion',
-        source_data: { reasoning: s.reasoning, generated_at: new Date().toISOString() },
+        source_data: { 
+          reasoning: s.reasoning, 
+          generated_at: new Date().toISOString(),
+          content_format: s.content_format,
+          search_intent: s.search_intent,
+          effort_score: s.effort_score,
+          roi_potential: s.roi_potential,
+          featured_snippet_type: s.featured_snippet_type,
+          internal_links: s.internal_links
+        },
         status: 'suggested'
       }));
 
