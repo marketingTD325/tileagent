@@ -75,14 +75,18 @@ serve(async (req) => {
       }
     }
 
-    // Current month for seasonal context
-    const currentMonth = new Date().toLocaleString('nl-NL', { month: 'long' });
+    // Current date for context
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.toLocaleString('nl-NL', { month: 'long' });
     const currentSeason = getSeasonNL();
 
     // Build AI prompt
     const prompt = `Je bent een SEO-expert voor tegeldepot.nl, een Nederlandse webshop voor tegels en badkamerproducten.
 
 Analyseer de volgende data en genereer 8-12 concrete content-suggesties voor de komende maand.
+
+BELANGRIJK: Het is nu ${currentMonth} ${currentYear}. Gebruik ALLEEN ${currentYear} in alle titels en content. Gebruik NOOIT oude jaartallen zoals 2024 of 2025.
 
 ## Content Gaps van Concurrenten:
 ${contentGaps.slice(0, 15).map(g => `- ${g.topic}: ${g.description} (kans: ${g.opportunity})`).join('\n')}
@@ -94,7 +98,7 @@ ${(keywords || []).slice(0, 15).map(k => `- "${k.keyword}" (volume: ${k.search_v
 ${topKeywords.slice(0, 15).map(k => `- "${k.keyword}" (geschat volume: ${k.searchVolume})`).join('\n')}
 
 ## Seizoenscontext:
-Het is nu ${currentMonth} (${currentSeason}). Denk aan seizoensgebonden content zoals:
+Het is nu ${currentMonth} ${currentYear} (${currentSeason}). Denk aan seizoensgebonden content zoals:
 - Voorjaar: badkamer renovatie, voorjaarsschoonmaak
 - Zomer: buitentegels, terras
 - Herfst: voorbereiding winter, binnen verbouwen
