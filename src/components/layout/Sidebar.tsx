@@ -12,12 +12,14 @@ import {
   Users,
   LogOut,
   Settings,
-  History
+  History,
+  Layers
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Content Generator', href: '/content', icon: FileText },
+  { name: 'Bulk Content', href: '/bulk-content', icon: Layers },
   { name: 'SEO Audit', href: '/audit', icon: Search },
   { name: 'Keyword Research', href: '/keywords', icon: TrendingUp },
   { name: 'Concurrenten', href: '/competitors', icon: Users },
