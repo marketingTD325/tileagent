@@ -258,6 +258,7 @@ export type Database = {
           position: number | null
           previous_position: number | null
           search_volume: number | null
+          target_domain: string | null
           user_id: string
         }
         Insert: {
@@ -271,6 +272,7 @@ export type Database = {
           position?: number | null
           previous_position?: number | null
           search_volume?: number | null
+          target_domain?: string | null
           user_id: string
         }
         Update: {
@@ -284,6 +286,7 @@ export type Database = {
           position?: number | null
           previous_position?: number | null
           search_volume?: number | null
+          target_domain?: string | null
           user_id?: string
         }
         Relationships: []
@@ -320,6 +323,59 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      rank_tracking_history: {
+        Row: {
+          checked_at: string
+          created_at: string
+          device: string | null
+          id: string
+          keyword_id: string
+          location: string | null
+          position: number | null
+          search_engine: string
+          snippet: string | null
+          title: string | null
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          checked_at?: string
+          created_at?: string
+          device?: string | null
+          id?: string
+          keyword_id: string
+          location?: string | null
+          position?: number | null
+          search_engine?: string
+          snippet?: string | null
+          title?: string | null
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          checked_at?: string
+          created_at?: string
+          device?: string | null
+          id?: string
+          keyword_id?: string
+          location?: string | null
+          position?: number | null
+          search_engine?: string
+          snippet?: string | null
+          title?: string | null
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rank_tracking_history_keyword_id_fkey"
+            columns: ["keyword_id"]
+            isOneToOne: false
+            referencedRelation: "keywords"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seo_audits: {
         Row: {
