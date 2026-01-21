@@ -169,15 +169,25 @@ export function FeedbackWidget() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-4 right-4 z-50 p-3 rounded-full shadow-lg transition-all duration-200 ${
+        className={`fixed bottom-4 right-4 z-50 rounded-2xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
           isOpen 
-            ? 'bg-muted text-muted-foreground hover:bg-muted/80' 
-            : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            ? 'bg-muted text-muted-foreground hover:bg-muted/80 p-3' 
+            : 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 px-4 py-3'
         }`}
       >
-        {isOpen ? <X className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
+        {isOpen ? (
+          <X className="h-5 w-5" />
+        ) : (
+          <>
+            <div className="relative">
+              <MessageSquare className="h-5 w-5" />
+              <Lightbulb className="h-3 w-3 absolute -top-1 -right-1.5 text-yellow-300" />
+            </div>
+            <span className="text-sm font-medium">Feedback</span>
+          </>
+        )}
         {!isOpen && openItems.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+          <span className="bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
             {openItems.length}
           </span>
         )}
