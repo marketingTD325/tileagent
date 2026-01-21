@@ -47,6 +47,98 @@ export type Database = {
         }
         Relationships: []
       }
+      bulk_job_items: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          generated_content_main: string | null
+          generated_content_side: string | null
+          id: string
+          input_data: Json
+          job_id: string
+          meta_description: string | null
+          meta_title: string | null
+          processed_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          generated_content_main?: string | null
+          generated_content_side?: string | null
+          id?: string
+          input_data?: Json
+          job_id: string
+          meta_description?: string | null
+          meta_title?: string | null
+          processed_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          generated_content_main?: string | null
+          generated_content_side?: string | null
+          id?: string
+          input_data?: Json
+          job_id?: string
+          meta_description?: string | null
+          meta_title?: string | null
+          processed_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "bulk_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bulk_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          failed_items: number
+          id: string
+          job_type: string
+          processed_items: number
+          status: string
+          total_items: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_items?: number
+          id?: string
+          job_type: string
+          processed_items?: number
+          status?: string
+          total_items?: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_items?: number
+          id?: string
+          job_type?: string
+          processed_items?: number
+          status?: string
+          total_items?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       competitor_analyses: {
         Row: {
           analysis_data: Json | null

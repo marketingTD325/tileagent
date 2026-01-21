@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ContentGenerator from "./pages/ContentGenerator";
+import BulkContent from "./pages/BulkContent";
 import SeoAudit from "./pages/SeoAudit";
 import KeywordResearch from "./pages/KeywordResearch";
 import Competitors from "./pages/Competitors";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/content" element={<ContentGenerator />} />
+            <Route path="/bulk-content" element={<BulkContent />} />
             <Route path="/audit" element={<SeoAudit />} />
             <Route path="/keywords" element={<KeywordResearch />} />
             <Route path="/competitors" element={<Competitors />} />
