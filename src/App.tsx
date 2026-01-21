@@ -10,6 +10,7 @@ import ContentGenerator from "./pages/ContentGenerator";
 import BulkContent from "./pages/BulkContent";
 import SeoAudit from "./pages/SeoAudit";
 import KeywordResearch from "./pages/KeywordResearch";
+import RankTracking from "./pages/RankTracking";
 import Competitors from "./pages/Competitors";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/bulk-content" element={<BulkContent />} />
             <Route path="/audit" element={<SeoAudit />} />
             <Route path="/keywords" element={<KeywordResearch />} />
+            <Route path="/rank-tracking" element={<RankTracking />} />
             <Route path="/competitors" element={<Competitors />} />
             <Route path="/history" element={<History />} />
             <Route path="*" element={<NotFound />} />
