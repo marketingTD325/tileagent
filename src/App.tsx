@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ContentGenerator from "./pages/ContentGenerator";
 import BulkContent from "./pages/BulkContent";
+import ContentCalendar from "./pages/ContentCalendar";
 import SeoAudit from "./pages/SeoAudit";
 import KeywordResearch from "./pages/KeywordResearch";
 import RankTracking from "./pages/RankTracking";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/content" element={<ContentGenerator />} />
             <Route path="/bulk-content" element={<BulkContent />} />
+            <Route path="/content-calendar" element={<ContentCalendar />} />
             <Route path="/audit" element={<SeoAudit />} />
             <Route path="/keywords" element={<KeywordResearch />} />
             <Route path="/rank-tracking" element={<RankTracking />} />

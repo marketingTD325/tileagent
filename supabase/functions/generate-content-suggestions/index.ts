@@ -1,0 +1,282 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`Generating content suggestions for user: ${user.id}`);
+
+    // Fetch competitor content gaps
+    const { data: analyses } = await supabaseClient
+      .from('competitor_analyses')
+      .select('content_gaps, top_keywords, analysis_data')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Fetch tracked keywords without good rankings
+    const { data: keywords } = await supabaseClient
+      .from('keywords')
+      .select('keyword, search_volume, position, category')
+      .eq('is_tracking', true)
+      .or('position.is.null,position.gt.10')
+      .order('search_volume', { ascending: false })
+      .limit(20);
+
+    // Fetch existing calendar items to avoid duplicates
+    const { data: existingItems } = await supabaseClient
+      .from('content_calendar')
+      .select('title, target_keywords')
+      .eq('user_id', user.id);
+
+    const existingTitles = new Set((existingItems || []).map(i => i.title.toLowerCase()));
+
+    // Collect all content gaps and keywords
+    const contentGaps: any[] = [];
+    const topKeywords: any[] = [];
+    
+    for (const analysis of (analyses || [])) {
+      if (analysis.content_gaps) {
+        const gaps = Array.isArray(analysis.content_gaps) ? analysis.content_gaps : [];
+        contentGaps.push(...gaps);
+      }
+      if (analysis.top_keywords) {
+        const kws = Array.isArray(analysis.top_keywords) ? analysis.top_keywords : [];
+        topKeywords.push(...kws);
+      }
+    }
+
+    // Current month for seasonal context
+    const currentMonth = new Date().toLocaleString('nl-NL', { month: 'long' });
+    const currentSeason = getSeasonNL();
+
+    // Build AI prompt
+    const prompt = `Je bent een SEO-expert voor tegeldepot.nl, een Nederlandse webshop voor tegels en badkamerproducten.
+
+Analyseer de volgende data en genereer 8-12 concrete content-suggesties voor de komende maand.
+
+## Content Gaps van Concurrenten:
+${contentGaps.slice(0, 15).map(g => `- ${g.topic}: ${g.description} (kans: ${g.opportunity})`).join('\n')}
+
+## Keywords waar we niet top 10 op staan:
+${(keywords || []).slice(0, 15).map(k => `- "${k.keyword}" (volume: ${k.search_volume}, huidige positie: ${k.position || 'niet gevonden'})`).join('\n')}
+
+## Top Keywords van Concurrenten:
+${topKeywords.slice(0, 15).map(k => `- "${k.keyword}" (geschat volume: ${k.searchVolume})`).join('\n')}
+
+## Seizoenscontext:
+Het is nu ${currentMonth} (${currentSeason}). Denk aan seizoensgebonden content zoals:
+- Voorjaar: badkamer renovatie, voorjaarsschoonmaak
+- Zomer: buitentegels, terras
+- Herfst: voorbereiding winter, binnen verbouwen
+- Winter: inspiratie, planning nieuw jaar
+
+## Output Format:
+Genereer een JSON array met suggesties. Elke suggestie heeft:
+- title: Korte titel voor de content
+- description: 1-2 zinnen wat de content moet bevatten
+- content_type: "category" | "blog" | "landing_page" | "guide"
+- target_keywords: array van 2-4 relevante keywords
+- priority: "high" | "medium" | "low"
+- opportunity_score: 1-100 (hoe groot is de kans op succes)
+- reasoning: Waarom deze content belangrijk is
+
+Focus op:
+1. Content gaps waar concurrenten sterk zijn maar wij niet
+2. Keywords met hoog volume waar we niet goed op ranken
+3. Seizoensgebonden kansen
+4. Long-tail variaties van populaire keywords`;
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+
+    console.log('Calling AI for content suggestions...');
+
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          { role: 'system', content: 'Je bent een SEO-strateeg. Geef alleen valid JSON terug, geen markdown of tekst eromheen.' },
+          { role: 'user', content: prompt }
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'save_content_suggestions',
+            description: 'Sla de gegenereerde content suggesties op',
+            parameters: {
+              type: 'object',
+              properties: {
+                suggestions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string' },
+                      description: { type: 'string' },
+                      content_type: { type: 'string', enum: ['category', 'blog', 'landing_page', 'guide'] },
+                      target_keywords: { type: 'array', items: { type: 'string' } },
+                      priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+                      opportunity_score: { type: 'number' },
+                      reasoning: { type: 'string' }
+                    },
+                    required: ['title', 'description', 'content_type', 'target_keywords', 'priority', 'opportunity_score']
+                  }
+                }
+              },
+              required: ['suggestions']
+            }
+          }
+        }],
+        tool_choice: { type: 'function', function: { name: 'save_content_suggestions' } }
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit bereikt, probeer later opnieuw' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      throw new Error(`AI API error: ${aiResponse.status}`);
+    }
+
+    const aiData = await aiResponse.json();
+    console.log('AI response received');
+
+    let suggestions: any[] = [];
+    
+    // Extract from tool call
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        suggestions = parsed.suggestions || [];
+      } catch (e) {
+        console.error('Failed to parse tool call arguments:', e);
+      }
+    }
+
+    if (suggestions.length === 0) {
+      // Fallback: try to parse from content
+      const content = aiData.choices?.[0]?.message?.content || '';
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        try {
+          suggestions = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          console.error('Failed to parse content JSON:', e);
+        }
+      }
+    }
+
+    console.log(`Generated ${suggestions.length} suggestions`);
+
+    // Filter out duplicates and insert new suggestions
+    const newSuggestions = suggestions.filter(s => 
+      !existingTitles.has(s.title.toLowerCase())
+    );
+
+    if (newSuggestions.length > 0) {
+      const insertData = newSuggestions.map(s => ({
+        user_id: user.id,
+        title: s.title,
+        description: s.description,
+        content_type: s.content_type,
+        target_keywords: s.target_keywords,
+        priority: s.priority,
+        opportunity_score: s.opportunity_score,
+        source: 'ai_suggestion',
+        source_data: { reasoning: s.reasoning, generated_at: new Date().toISOString() },
+        status: 'suggested'
+      }));
+
+      const { error: insertError } = await supabaseClient
+        .from('content_calendar')
+        .insert(insertData);
+
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        throw insertError;
+      }
+
+      console.log(`Inserted ${newSuggestions.length} new suggestions`);
+    }
+
+    // Log activity
+    await supabaseClient.from('activity_log').insert({
+      user_id: user.id,
+      action_type: 'content_suggestions',
+      action_description: `AI genereerde ${newSuggestions.length} nieuwe content-suggesties`,
+      metadata: { total: suggestions.length, new: newSuggestions.length, duplicates: suggestions.length - newSuggestions.length }
+    });
+
+    return new Response(JSON.stringify({
+      success: true,
+      total_generated: suggestions.length,
+      new_added: newSuggestions.length,
+      duplicates_skipped: suggestions.length - newSuggestions.length,
+      suggestions: newSuggestions
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error generating suggestions:', error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+function getSeasonNL(): string {
+  const month = new Date().getMonth();
+  if (month >= 2 && month <= 4) return 'lente';
+  if (month >= 5 && month <= 7) return 'zomer';
+  if (month >= 8 && month <= 10) return 'herfst';
+  return 'winter';
+}
