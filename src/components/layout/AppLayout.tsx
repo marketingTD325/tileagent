@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import Sidebar from './Sidebar';
 import SwipeIndicator from './SwipeIndicator';
+import { FeedbackWidget } from '@/components/FeedbackWidget';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
@@ -47,6 +48,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           currentIndex={currentIndex}
           totalPages={totalPages}
         />
+
+        {/* Feedback Widget */}
+        <FeedbackWidget />
       </div>
     );
   }
@@ -59,6 +63,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {children}
         </div>
       </main>
+      
+      {/* Feedback Widget */}
+      <FeedbackWidget />
     </div>
   );
 }
