@@ -13,25 +13,9 @@ import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import {
   Loader2, Sparkles, Calendar as CalendarIcon, CheckCircle, Clock,
-  Trash2, Target, TrendingUp, FileText, Lightbulb,
-  RefreshCw, Play
+  Target, TrendingUp, FileText, Lightbulb, RefreshCw
 } from 'lucide-react';
-
-interface ContentSuggestion {
-  id: string;
-  title: string;
-  description: string;
-  content_type: string;
-  target_keywords: string[];
-  priority: string;
-  opportunity_score: number;
-  source: string;
-  source_data: any;
-  status: string;
-  scheduled_date: string | null;
-  completed_at: string | null;
-  created_at: string;
-}
+import { ContentTypeTab, ContentSuggestion } from '@/components/content-calendar';
 
 export default function ContentCalendar() {
   const { user, loading } = useAuth();
@@ -163,39 +147,31 @@ export default function ContentCalendar() {
     updateStatus(suggestion.id, 'in_progress');
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-      case 'medium': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'low': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-      default: return 'bg-muted text-muted-foreground';
-    }
+  // Content type configurations
+  const contentTypes = [
+    { id: 'category', label: 'Categorieën', icon: <Target className="h-4 w-4" />, description: 'Product categoriepagina\'s' },
+    { id: 'blog', label: 'Blogs', icon: <FileText className="h-4 w-4" />, description: 'Informatieve blogartikelen' },
+    { id: 'landing_page', label: 'Landingspagina\'s', icon: <TrendingUp className="h-4 w-4" />, description: 'Conversie-gerichte pagina\'s' },
+    { id: 'guide', label: 'Gidsen', icon: <Lightbulb className="h-4 w-4" />, description: 'Uitgebreide handleidingen' },
+  ];
+
+  // Calculate stats per type
+  const getTypeStats = (type: string) => {
+    const typeItems = suggestions.filter(s => s.content_type === type);
+    return {
+      total: typeItems.length,
+      suggested: typeItems.filter(s => s.status === 'suggested').length,
+      in_progress: typeItems.filter(s => s.status === 'in_progress').length,
+    };
   };
 
-  const getContentTypeIcon = (type: string) => {
-    switch (type) {
-      case 'category': return <Target className="h-4 w-4" />;
-      case 'blog': return <FileText className="h-4 w-4" />;
-      case 'landing_page': return <TrendingUp className="h-4 w-4" />;
-      case 'guide': return <Lightbulb className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
+  // Global stats
+  const globalStats = {
+    suggested: suggestions.filter(s => s.status === 'suggested').length,
+    scheduled: suggestions.filter(s => s.status === 'scheduled').length,
+    in_progress: suggestions.filter(s => s.status === 'in_progress').length,
+    completed: suggestions.filter(s => s.status === 'completed').length,
   };
-
-  const getContentTypeLabel = (type: string) => {
-    switch (type) {
-      case 'category': return 'Categorie';
-      case 'blog': return 'Blog';
-      case 'landing_page': return 'Landingspagina';
-      case 'guide': return 'Gids';
-      default: return type;
-    }
-  };
-
-  const suggestedItems = suggestions.filter(s => s.status === 'suggested');
-  const scheduledItems = suggestions.filter(s => s.status === 'scheduled');
-  const inProgressItems = suggestions.filter(s => s.status === 'in_progress');
-  const completedItems = suggestions.filter(s => s.status === 'completed');
 
   if (loading || !user) return null;
 
@@ -210,7 +186,7 @@ export default function ContentCalendar() {
               Content Kalender
             </h1>
             <p className="text-sm md:text-base text-muted-foreground mt-1">
-              AI-gestuurde content suggesties op basis van concurrentie en keywords
+              AI-gestuurde content suggesties per type met eigen Kanban-bord
             </p>
           </div>
 
@@ -229,7 +205,7 @@ export default function ContentCalendar() {
           </Button>
         </div>
 
-        {/* Stats Overview */}
+        {/* Global Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card>
             <CardContent className="pt-4 pb-3">
@@ -238,7 +214,7 @@ export default function ContentCalendar() {
                   <Lightbulb className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{suggestedItems.length}</p>
+                  <p className="text-2xl font-bold">{globalStats.suggested}</p>
                   <p className="text-xs text-muted-foreground">Suggesties</p>
                 </div>
               </div>
@@ -251,7 +227,7 @@ export default function ContentCalendar() {
                   <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{scheduledItems.length}</p>
+                  <p className="text-2xl font-bold">{globalStats.scheduled}</p>
                   <p className="text-xs text-muted-foreground">Ingepland</p>
                 </div>
               </div>
@@ -264,7 +240,7 @@ export default function ContentCalendar() {
                   <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{inProgressItems.length}</p>
+                  <p className="text-2xl font-bold">{globalStats.in_progress}</p>
                   <p className="text-xs text-muted-foreground">In Progress</p>
                 </div>
               </div>
@@ -277,7 +253,7 @@ export default function ContentCalendar() {
                   <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{completedItems.length}</p>
+                  <p className="text-2xl font-bold">{globalStats.completed}</p>
                   <p className="text-xs text-muted-foreground">Afgerond</p>
                 </div>
               </div>
@@ -307,115 +283,38 @@ export default function ContentCalendar() {
             </CardContent>
           </Card>
         ) : (
-          <Tabs defaultValue="suggested" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-              <TabsTrigger value="suggested">
-                Suggesties ({suggestedItems.length})
-              </TabsTrigger>
-              <TabsTrigger value="scheduled">
-                Ingepland ({scheduledItems.length})
-              </TabsTrigger>
-              <TabsTrigger value="in_progress">
-                In Progress ({inProgressItems.length})
-              </TabsTrigger>
-              <TabsTrigger value="completed">
-                Afgerond ({completedItems.length})
-              </TabsTrigger>
+          <Tabs defaultValue="category" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:w-auto lg:inline-grid h-auto">
+              {contentTypes.map((type) => {
+                const stats = getTypeStats(type.id);
+                return (
+                  <TabsTrigger 
+                    key={type.id} 
+                    value={type.id}
+                    className="flex items-center gap-2 py-2.5"
+                  >
+                    {type.icon}
+                    <span className="hidden sm:inline">{type.label}</span>
+                    <Badge variant="secondary" className="ml-1 text-xs">
+                      {stats.total}
+                    </Badge>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
-            <TabsContent value="suggested" className="mt-4">
-              <div className="grid gap-3">
-                {suggestedItems.map((item) => (
-                  <SuggestionCard
-                    key={item.id}
-                    item={item}
-                    onStart={() => startContent(item)}
-                    onSchedule={() => setSchedulingId(item.id)}
-                    onDelete={() => deleteItem(item.id)}
-                    getPriorityColor={getPriorityColor}
-                    getContentTypeIcon={getContentTypeIcon}
-                    getContentTypeLabel={getContentTypeLabel}
-                  />
-                ))}
-                {suggestedItems.length === 0 && (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      Geen nieuwe suggesties. Klik op "Genereer Suggesties" voor nieuwe ideeën.
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="scheduled" className="mt-4">
-              <div className="grid gap-3">
-                {scheduledItems.map((item) => (
-                  <SuggestionCard
-                    key={item.id}
-                    item={item}
-                    onStart={() => startContent(item)}
-                    onDelete={() => deleteItem(item.id)}
-                    getPriorityColor={getPriorityColor}
-                    getContentTypeIcon={getContentTypeIcon}
-                    getContentTypeLabel={getContentTypeLabel}
-                    showDate
-                  />
-                ))}
-                {scheduledItems.length === 0 && (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      Geen ingeplande content.
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="in_progress" className="mt-4">
-              <div className="grid gap-3">
-                {inProgressItems.map((item) => (
-                  <SuggestionCard
-                    key={item.id}
-                    item={item}
-                    onComplete={() => updateStatus(item.id, 'completed')}
-                    onDelete={() => deleteItem(item.id)}
-                    getPriorityColor={getPriorityColor}
-                    getContentTypeIcon={getContentTypeIcon}
-                    getContentTypeLabel={getContentTypeLabel}
-                  />
-                ))}
-                {inProgressItems.length === 0 && (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      Geen content in progress.
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="completed" className="mt-4">
-              <div className="grid gap-3">
-                {completedItems.map((item) => (
-                  <SuggestionCard
-                    key={item.id}
-                    item={item}
-                    onDelete={() => deleteItem(item.id)}
-                    getPriorityColor={getPriorityColor}
-                    getContentTypeIcon={getContentTypeIcon}
-                    getContentTypeLabel={getContentTypeLabel}
-                    completed
-                  />
-                ))}
-                {completedItems.length === 0 && (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      Nog geen afgeronde content.
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </TabsContent>
+            {contentTypes.map((type) => (
+              <TabsContent key={type.id} value={type.id} className="mt-4">
+                <ContentTypeTab
+                  items={suggestions}
+                  contentType={type.id}
+                  onStart={startContent}
+                  onSchedule={(id) => setSchedulingId(id)}
+                  onComplete={(id) => updateStatus(id, 'completed')}
+                  onDelete={deleteItem}
+                />
+              </TabsContent>
+            ))}
           </Tabs>
         )}
 
@@ -453,136 +352,5 @@ export default function ContentCalendar() {
         )}
       </div>
     </AppLayout>
-  );
-}
-
-interface SuggestionCardProps {
-  item: ContentSuggestion;
-  onStart?: () => void;
-  onSchedule?: () => void;
-  onComplete?: () => void;
-  onDelete: () => void;
-  getPriorityColor: (priority: string) => string;
-  getContentTypeIcon: (type: string) => React.ReactNode;
-  getContentTypeLabel: (type: string) => string;
-  showDate?: boolean;
-  completed?: boolean;
-}
-
-function SuggestionCard({
-  item,
-  onStart,
-  onSchedule,
-  onComplete,
-  onDelete,
-  getPriorityColor,
-  getContentTypeIcon,
-  getContentTypeLabel,
-  showDate,
-  completed
-}: SuggestionCardProps) {
-  return (
-    <Card className={completed ? 'opacity-70' : ''}>
-      <CardContent className="py-4">
-        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-          {/* Score */}
-          <div className="hidden sm:flex flex-col items-center justify-center w-16 shrink-0">
-            <div className="relative w-14 h-14">
-              <svg className="w-14 h-14 -rotate-90">
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                  className="text-muted"
-                />
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray={`${(item.opportunity_score / 100) * 150.8} 150.8`}
-                  className="text-primary"
-                />
-              </svg>
-              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">
-                {item.opportunity_score}
-              </span>
-            </div>
-            <span className="text-xs text-muted-foreground mt-1">Score</span>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2 mb-2">
-              <Badge variant="outline" className="shrink-0 gap-1">
-                {getContentTypeIcon(item.content_type)}
-                {getContentTypeLabel(item.content_type)}
-              </Badge>
-              <Badge className={`shrink-0 ${getPriorityColor(item.priority)}`}>
-                {item.priority === 'high' ? 'Hoog' : item.priority === 'medium' ? 'Medium' : 'Laag'}
-              </Badge>
-              {showDate && item.scheduled_date && (
-                <Badge variant="secondary" className="shrink-0 gap-1">
-                  <CalendarIcon className="h-3 w-3" />
-                  {format(new Date(item.scheduled_date), 'd MMM', { locale: nl })}
-                </Badge>
-              )}
-            </div>
-
-            <h3 className="font-semibold mb-1">{item.title}</h3>
-            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{item.description}</p>
-
-            <div className="flex flex-wrap gap-1.5">
-              {item.target_keywords.slice(0, 4).map((kw, i) => (
-                <Badge key={i} variant="secondary" className="text-xs">
-                  {kw}
-                </Badge>
-              ))}
-              {item.target_keywords.length > 4 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{item.target_keywords.length - 4}
-                </Badge>
-              )}
-            </div>
-
-            {item.source_data?.reasoning && (
-              <p className="text-xs text-muted-foreground mt-2 italic">
-                💡 {item.source_data.reasoning}
-              </p>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex sm:flex-col gap-2 shrink-0">
-            {onStart && (
-              <Button size="sm" onClick={onStart}>
-                <Play className="h-4 w-4 mr-1" />
-                Start
-              </Button>
-            )}
-            {onSchedule && (
-              <Button size="sm" variant="outline" onClick={onSchedule}>
-                <CalendarIcon className="h-4 w-4 mr-1" />
-                Plan
-              </Button>
-            )}
-            {onComplete && (
-              <Button size="sm" variant="outline" onClick={onComplete}>
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Klaar
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
