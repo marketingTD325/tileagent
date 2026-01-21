@@ -210,6 +210,60 @@ export type Database = {
         }
         Relationships: []
       }
+      content_calendar: {
+        Row: {
+          completed_at: string | null
+          content_type: string
+          created_at: string
+          description: string | null
+          id: string
+          opportunity_score: number | null
+          priority: string
+          scheduled_date: string | null
+          source: string | null
+          source_data: Json | null
+          status: string
+          target_keywords: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          opportunity_score?: number | null
+          priority?: string
+          scheduled_date?: string | null
+          source?: string | null
+          source_data?: Json | null
+          status?: string
+          target_keywords?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          opportunity_score?: number | null
+          priority?: string
+          scheduled_date?: string | null
+          source?: string | null
+          source_data?: Json | null
+          status?: string
+          target_keywords?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_content: {
         Row: {
           content: string

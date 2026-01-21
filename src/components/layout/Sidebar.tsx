@@ -14,13 +14,15 @@ import {
   Settings,
   History,
   Layers,
-  LineChart
+  LineChart,
+  Sparkles
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Content Generator', href: '/content', icon: FileText },
   { name: 'Bulk Content', href: '/bulk-content', icon: Layers },
+  { name: 'Content Kalender', href: '/content-calendar', icon: Sparkles },
   { name: 'SEO Audit', href: '/audit', icon: Search },
   { name: 'Keyword Research', href: '/keywords', icon: TrendingUp },
   { name: 'Rank Tracking', href: '/rank-tracking', icon: LineChart },
