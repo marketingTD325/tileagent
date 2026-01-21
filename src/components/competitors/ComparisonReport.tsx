@@ -6,9 +6,9 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
-  Trophy, TrendingUp, TrendingDown, Minus, BarChart3, Globe,
+  Trophy, Medal, TrendingUp, TrendingDown, Minus, BarChart3, Globe,
   FileText, Settings, Target, Zap, Download, ExternalLink,
-  CheckCircle, XCircle, AlertTriangle
+  CheckCircle, XCircle, AlertTriangle, Crown
 } from 'lucide-react';
 
 interface CompetitorWithAnalysis {
@@ -88,8 +88,8 @@ export default function ComparisonReport({ competitors, onClose }: ComparisonRep
 
   const getRankBadge = (rank: number) => {
     if (rank === 1) return <Badge className="bg-amber-500 hover:bg-amber-600 text-white"><Trophy className="h-3 w-3 mr-1" />#1</Badge>;
-    if (rank === 2) return <Badge variant="secondary">#2</Badge>;
-    if (rank === 3) return <Badge variant="outline">#3</Badge>;
+    if (rank === 2) return <Badge className="bg-slate-400 hover:bg-slate-500 text-white">#2</Badge>;
+    if (rank === 3) return <Badge className="bg-orange-400 hover:bg-orange-500 text-white">#3</Badge>;
     return <Badge variant="outline">#{rank}</Badge>;
   };
 
@@ -97,6 +97,53 @@ export default function ComparisonReport({ competitors, onClose }: ComparisonRep
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
     return num.toString();
+  };
+
+  const getPodiumStyles = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return {
+          card: 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/20 border-amber-300 dark:border-amber-700 ring-2 ring-amber-400/50',
+          number: 'text-amber-600 dark:text-amber-400',
+          icon: <Crown className="h-8 w-8 text-amber-500" />,
+        };
+      case 2:
+        return {
+          card: 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-700/20 border-slate-300 dark:border-slate-600',
+          number: 'text-slate-600 dark:text-slate-400',
+          icon: <Medal className="h-7 w-7 text-slate-500" />,
+        };
+      case 3:
+        return {
+          card: 'bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/20 border-orange-300 dark:border-orange-600',
+          number: 'text-orange-600 dark:text-orange-400',
+          icon: <Medal className="h-6 w-6 text-orange-500" />,
+        };
+      default:
+        return {
+          card: 'bg-card border-border',
+          number: 'text-muted-foreground',
+          icon: null,
+        };
+    }
+  };
+
+  const getScoreLabel = () => {
+    switch (sortBy) {
+      case 'visibility': return 'Visibility Score';
+      case 'technical': return 'Technical SEO';
+      case 'content': return 'Content Score';
+      case 'traffic': return 'Geschat Traffic';
+    }
+  };
+
+  const getPrimaryScore = (comp: typeof analyzedCompetitors[0]) => {
+    switch (sortBy) {
+      case 'visibility': return comp.visibilityScore;
+      case 'technical': return comp.technicalScore;
+      case 'content': return comp.contentScore;
+      case 'traffic': return comp.traffic;
+    }
   };
 
   const exportReport = () => {
@@ -192,6 +239,67 @@ export default function ComparisonReport({ competitors, onClose }: ComparisonRep
         >
           Traffic
         </Button>
+      </div>
+
+      {/* Ranking Podium */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Marktpositie Ranking</h3>
+          <p className="text-sm text-muted-foreground">Gerangschikt op: {getScoreLabel()}</p>
+        </div>
+        
+        {/* Top 3 Podium */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {analyzedCompetitors.slice(0, 3).map((comp, index) => {
+            const styles = getPodiumStyles(index + 1);
+            const score = getPrimaryScore(comp);
+            return (
+              <Card key={comp.id} className={`${styles.card} transition-all hover:shadow-lg`}>
+                <CardContent className="pt-6 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    {styles.icon}
+                    <span className={`text-5xl font-black ${styles.number}`}>
+                      #{index + 1}
+                    </span>
+                  </div>
+                  <h4 className="text-xl font-bold truncate px-2">{comp.name}</h4>
+                  <p className="text-sm text-muted-foreground mb-3">{comp.domain}</p>
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-xl ${getScoreBgColor(sortBy === 'traffic' ? 70 : score)}`}>
+                    <span className={`text-2xl font-bold ${getScoreColor(sortBy === 'traffic' ? 70 : score)}`}>
+                      {sortBy === 'traffic' ? formatNumber(score) : score}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">{getScoreLabel()}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Positions 4+ */}
+        {analyzedCompetitors.length > 3 && (
+          <div className="space-y-2">
+            {analyzedCompetitors.slice(3).map((comp, index) => {
+              const score = getPrimaryScore(comp);
+              return (
+                <div key={comp.id} className="flex items-center gap-4 p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
+                  <span className="text-3xl font-bold text-muted-foreground w-14 text-center">
+                    #{index + 4}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{comp.name}</p>
+                    <p className="text-sm text-muted-foreground">{comp.domain}</p>
+                  </div>
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-lg ${getScoreBgColor(sortBy === 'traffic' ? 70 : score)}`}>
+                    <span className={`text-lg font-bold ${getScoreColor(sortBy === 'traffic' ? 70 : score)}`}>
+                      {sortBy === 'traffic' ? formatNumber(score) : score}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
