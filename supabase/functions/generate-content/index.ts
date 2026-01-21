@@ -20,12 +20,14 @@ Je volgt:
 `;
 
 const SEO_ANALYSIS_PHASE = `
-# ANALYSEFASE (voorafgaand aan schrijven)
+# ANALYSEFASE (intern, NIET in output)
 
-Je bepaalt zelfstandig:
+Voordat je schrijft, analyseer je INTERN (schrijf dit NIET op):
 1. Wat de zoekintentie is achter dit onderwerp
 2. Wat de doelgroep nodig heeft om écht geholpen te zijn
-3. Welke content andere sterke pagina's bieden — en hoe jouw content die gaat overtreffen (originaliteit, diepgang, praktijkgerichtheid)
+3. Welke content andere sterke pagina's bieden — en hoe jouw content die gaat overtreffen
+
+⚠️ KRITISCH: Je analyse is ALLEEN voor intern gebruik. De output bevat UITSLUITEND de gevraagde tekst, beginnend met de H1 titel. Geen meta-commentaar, geen analyse, geen uitleg over wat je gaat doen.
 `;
 
 const HELPFULNESS_CRITERIA = `
@@ -357,20 +359,11 @@ HELPFULNESS CHECK:
 - Anticipeert op vragen van de koper
 - Biedt unieke inzichten (niet generiek)
 - Behandelt relevante aspecten volledig`,
-        user: `# OPDRACHT: Productbeschrijving
+        user: `Schrijf een productbeschrijving voor: ${productName}
+${keywords?.length ? `Zoekwoorden: ${keywords.join(', ')}` : ''}
+${context ? `Context: ${context}` : ''}
 
-## ANALYSE VOORAF
-1. Bepaal de zoekintentie achter dit product
-2. Wat heeft de koper nodig om geholpen te zijn?
-3. Welke unieke waarde kun jij toevoegen?
-
-## PRODUCTGEGEVENS
-- Product: ${productName}
-${keywords?.length ? `- Zoekwoorden: ${keywords.join(', ')}` : ''}
-${context ? `- Extra context: ${context}` : ''}
-
-## LEVERING
-Lever direct de tekst. Geen intro over wat je gaat doen.`
+⚠️ LEVER ALLEEN DE TEKST - geen analyse, geen intro, geen uitleg. Begin direct met de content.`
       },
       blog_post: {
         system: `${FULL_SEO_EXPERT_SYSTEM}
@@ -396,23 +389,12 @@ E-E-A-T SIGNALEN:
 - Verwerk praktijkervaring: "In de praktijk zien we vaak..."
 - Toon expertise door diepgaande uitleg
 - Geef context over waarom informatie klopt`,
-        user: `# OPDRACHT: Blogartikel
+        user: `Schrijf een blogartikel over: ${productName}
+${keywords?.length ? `Zoekwoorden: ${keywords.join(', ')}` : ''}
+${context ? `Context: ${context}` : ''}
+Doelgroep: Consumenten die oriënteren op een aankoop
 
-## ANALYSE VOORAF
-1. Wat is de zoekintentie achter dit onderwerp?
-2. Wat heeft de doelgroep nodig om écht geholpen te zijn?
-3. Hoe overtref je bestaande content (originaliteit, diepgang)?
-
-## ARTIKELGEGEVENS
-- Onderwerp: ${productName}
-${keywords?.length ? `- Zoekwoorden: ${keywords.join(', ')}` : ''}
-${context ? `- Extra context: ${context}` : ''}
-
-## DOELGROEP
-Consumenten die oriënteren op een aankoop
-
-## LEVERING
-Lever direct het artikel. Begin met de H1 titel.`
+⚠️ LEVER ALLEEN HET ARTIKEL - begin direct met de <h1> titel. Geen analyse, geen intro, geen meta-commentaar.`
       },
       meta_tags: {
         system: `${FULL_SEO_EXPERT_SYSTEM}
@@ -459,31 +441,13 @@ VERPLICHTE ELEMENTEN:
 - Specialist tip sectie
 - Sfeervolle beeldspraak
 - Afsluitende CTA naar producten`,
-        user: `# OPDRACHT: Categoriebeschrijving
+        user: `Schrijf een categoriebeschrijving voor: ${productName}
+${keywords?.length ? `Zoekwoorden: ${keywords.join(', ')}` : ''}
+${context ? `Context: ${context}` : ''}
 
-## ANALYSE VOORAF
-1. Wat is de zoekintentie achter deze categorie?
-2. Wat heeft de oriënterende bezoeker nodig?
-3. Hoe overtref je andere categoriepagina's?
+Structuur: H1 + intro → Keuzehulp secties (H2/H3) → Specialist tips → FAQ (3-5 vragen) → CTA
 
-## CATEGORIEGEGEVENS
-- Categorie: ${productName}
-${keywords?.length ? `- Zoekwoorden: ${keywords.join(', ')}` : ''}
-${context ? `- Extra context: ${context}` : ''}
-
-## DOEL
-Oriënteren en tot aankoop aanzetten
-
-## VEREISTE STRUCTUUR
-1. H1 + korte intro (doel van de pagina)
-2. Keuzehulp secties met H2/H3
-3. Praktische tips per toepassing
-4. Specialist tip sectie
-5. Interne links naar subcategorieën (suggereer placeholders als [link naar X])
-6. FAQ sectie (3-5 vragen)
-7. Afsluitende CTA
-
-Lever direct de tekst.`
+⚠️ LEVER ALLEEN DE HTML TEKST - begin direct met <h1>. Geen analyse, geen intro, geen meta-commentaar.`
       },
       category_with_links: {
         system: `${FULL_SEO_EXPERT_SYSTEM}
@@ -520,43 +484,16 @@ KRITISCH - INTERNE LINKING REGELS:
 3. Verwerk links op logische plekken (in keuzehulp, tips, of beschrijvende tekst)
 4. De ankertekst mag aangepast worden om natuurlijk te lezen, maar de URL moet exact blijven
 5. Controleer dat ALLE links zijn verwerkt voordat je de tekst aflevert`,
-        user: `# OPDRACHT: Categoriebeschrijving met Interne Links
+        user: `Schrijf een categoriebeschrijving voor: ${productName}
+${keywords?.length ? `Zoekwoorden: ${keywords.join(', ')}` : ''}
+${context ? `Context: ${context}` : ''}
 
-## ANALYSE VOORAF
-1. Wat is de zoekintentie achter deze categorie?
-2. Wat heeft de oriënterende bezoeker nodig om écht geholpen te zijn?
-3. Hoe kun je de opgegeven links natuurlijk verwerken?
+VERPLICHTE INTERNE LINKS (verwerk allemaal als <a href="URL">tekst</a>):
+${internalLinks?.length ? internalLinks.map((link: { anchor: string; url: string }, index: number) => `${index + 1}. "${link.anchor}" → ${link.url}`).join('\n') : 'Geen links opgegeven'}
 
-## CATEGORIEGEGEVENS
-- Categorie: ${productName}
-${keywords?.length ? `- Zoekwoorden: ${keywords.join(', ')}` : ''}
-${context ? `- Extra context: ${context}` : ''}
+Structuur: <h1> + intro → Keuzehulp secties → Specialist tip → Praktische tips → FAQ (2-3 vragen) → CTA
 
-## DOEL
-Oriënteren en tot aankoop aanzetten
-
-=== VERPLICHTE INTERNE LINKS (ALLEMAAL VERWERKEN) ===
-${internalLinks?.length ? internalLinks.map((link: { anchor: string; url: string }, index: number) => `${index + 1}. Ankertekst: "${link.anchor}" | URL: ${link.url}`).join('\n') : 'Geen links opgegeven'}
-
-=== VEREISTE STRUCTUUR ===
-1. <h1> + Intro (spreek vanuit Tegeldepot expertise)
-2. Keuzehulp secties met <h2>/<h3> (help bezoeker kiezen)
-3. Specialist tip sectie ("Tip van onze tegelexpert:")
-4. Praktische tips (met sfeervolle beeldspraak)
-5. VERWERK ELKE LINK als: <a href="URL">tekst</a>
-6. FAQ sectie (2-3 unieke vragen, GEEN herhaling)
-7. Afsluitende CTA paragraaf (leid naar producten)
-
-⚠️ KWALITEITSCONTROLE CHECKLIST:
-- [ ] Alle ${internalLinks?.length || 0} links als <a href="...">...</a> verwerkt
-- [ ] E-E-A-T: Expertise van Tegeldepot duidelijk
-- [ ] Specialist tip aanwezig
-- [ ] Sfeervolle beeldspraak toegevoegd
-- [ ] Afsluitende CTA naar producten
-- [ ] Geen AI-fluff of generieke tekst
-- [ ] Unieke inzichten en praktische waarde
-
-Lever direct de HTML tekst.`
+⚠️ LEVER ALLEEN DE HTML TEKST - begin DIRECT met <h1>. GEEN analyse, GEEN intro, GEEN meta-commentaar, GEEN uitleg over zoekintentie. Alleen de uiteindelijke tekst.`
       }
     };
 
