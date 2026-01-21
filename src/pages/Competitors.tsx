@@ -15,10 +15,11 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { analyzeCompetitor } from '@/lib/api';
+import ComparisonReport from '@/components/competitors/ComparisonReport';
 import { 
   Loader2, Users, Plus, Trash2, ExternalLink, TrendingUp, AlertTriangle,
   Target, FileText, Settings, BarChart3, Zap, CheckCircle, XCircle,
-  Globe, Search, Lightbulb, ArrowRight, PlayCircle
+  Globe, Search, Lightbulb, ArrowRight, PlayCircle, ClipboardList
 } from 'lucide-react';
 
 interface ExtendedCompetitorAnalysis {
@@ -89,6 +90,7 @@ export default function Competitors() {
   const [selectedAnalysis, setSelectedAnalysis] = useState<ExtendedCompetitorAnalysis | null>(null);
   const [selectedCompetitorName, setSelectedCompetitorName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [showComparisonReport, setShowComparisonReport] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -311,6 +313,16 @@ export default function Competitors() {
                 </>
               )}
             </Button>
+
+            <Button 
+              variant="outline"
+              onClick={() => setShowComparisonReport(true)}
+              disabled={competitors.filter(c => c.competitor_analyses?.length > 0).length === 0}
+              className="w-full sm:w-auto"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Vergelijk</span>
+            </Button>
             
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
@@ -367,7 +379,13 @@ export default function Competitors() {
           </Card>
         )}
 
-        {competitors.length === 0 ? (
+        {/* Comparison Report View */}
+        {showComparisonReport ? (
+          <ComparisonReport 
+            competitors={competitors} 
+            onClose={() => setShowComparisonReport(false)} 
+          />
+        ) : competitors.length === 0 ? (
           <Card>
             <CardContent className="py-8 md:py-12 text-center">
               <Users className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 text-muted-foreground" />
