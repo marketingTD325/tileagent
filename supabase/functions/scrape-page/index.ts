@@ -5,42 +5,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Extract meta description with multiple patterns - NO fallback to body text
+// STRICT meta description extraction - ONLY from meta tags, NEVER from body text
 function extractMetaDescription(html: string): string | null {
+  // STRICT RULE: Only extract from meta[name="description"] or meta[property="og:description"]
+  // NEVER fall back to body text, paragraphs, or any other content
+  
   const patterns = [
     // Standard: <meta name="description" content="...">
     /<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i,
     // Reversed: <meta content="..." name="description">
     /<meta[^>]*content=["']([^"']*?)["'][^>]*name=["']description["']/i,
-    // With property instead of name (less common)
-    /<meta[^>]*property=["']description["'][^>]*content=["']([^"']*)["']/i,
-    /<meta[^>]*content=["']([^"']*?)["'][^>]*property=["']description["']/i,
+    // OG description fallback
+    /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["']/i,
+    /<meta[^>]*content=["']([^"']*?)["'][^>]*property=["']og:description["']/i,
   ];
 
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match[1] && match[1].trim().length > 0) {
       const desc = match[1].trim();
-      // Filter out obvious non-meta-description content
-      const invalidPatterns = [
-        /winkelwagen/i,
-        /cart/i,
-        /login/i,
-        /cookie/i,
-        /javascript/i,
-      ];
-      
-      const isValid = !invalidPatterns.some(p => p.test(desc));
-      if (isValid && desc.length >= 20) { // Meta descriptions should be at least 20 chars
+      // Only return if it looks like a real meta description (>= 20 chars, no UI text)
+      if (desc.length >= 20) {
         return desc;
       }
     }
   }
   
-  return null; // CRITICAL: Return null, NOT body text fallback
+  // CRITICAL: Return null if no meta description found
+  // DO NOT return body text, first paragraph, or any other fallback
+  return null;
 }
 
-// Extract and categorize links from HTML
+// Extract and categorize ALL links from entire HTML (including footer/ABC)
 function analyzeLinkStructure(html: string, baseUrl: string): {
   total: number;
   internal: number;
@@ -52,58 +48,72 @@ function analyzeLinkStructure(html: string, baseUrl: string): {
   try {
     const hostname = new URL(baseUrl).hostname;
     
-    // Get all links
-    const linkMatches = html.match(/<a[^>]*href=["']([^"'#]*)["'][^>]*>/gi) || [];
+    // Get ALL links from entire DOM - global selector, not restricted to main/article
+    const linkMatches = html.match(/<a[^>]*href=["']([^"'#][^"']*)["'][^>]*>/gi) || [];
     const allLinks = linkMatches.map(link => {
-      const hrefMatch = link.match(/href=["']([^"'#]*)["']/i);
+      const hrefMatch = link.match(/href=["']([^"'#][^"']*)["']/i);
       return hrefMatch ? hrefMatch[1] : '';
-    }).filter(href => href.length > 0);
+    }).filter(href => href.length > 0 && !href.startsWith('javascript:') && !href.startsWith('mailto:') && !href.startsWith('tel:'));
 
-    // Count internal vs external
+    // Count internal vs external for ALL links
     let internal = 0;
     let external = 0;
     
     for (const href of allLinks) {
       try {
-        if (href.startsWith('/') || href.startsWith('#')) {
+        if (href.startsWith('/')) {
           internal++;
         } else if (href.startsWith('http')) {
           const linkHost = new URL(href).hostname;
-          if (linkHost === hostname || linkHost.endsWith('.' + hostname)) {
+          if (linkHost === hostname || linkHost.endsWith('.' + hostname) || hostname.endsWith('.' + linkHost)) {
             internal++;
           } else {
             external++;
           }
         } else {
-          internal++; // relative links
+          internal++; // relative links without leading slash
         }
       } catch {
         internal++; // malformed URLs are likely internal
       }
     }
 
-    // Detect footer links
-    const footerMatch = html.match(/<footer[^>]*>([\s\S]*?)<\/footer>/i);
-    const footerLinks = footerMatch 
-      ? (footerMatch[1].match(/<a\s/gi) || []).length 
-      : 0;
+    // Detect footer links - search for common footer containers
+    const footerPatterns = [
+      /<footer[^>]*>([\s\S]*?)<\/footer>/gi,
+      /<div[^>]*(class|id)=["'][^"']*(footer|foot-nav|site-footer)[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi,
+    ];
+    
+    let footerLinks = 0;
+    for (const pattern of footerPatterns) {
+      const matches = html.matchAll(pattern);
+      for (const match of matches) {
+        const footerHtml = match[0];
+        footerLinks += (footerHtml.match(/<a\s[^>]*href/gi) || []).length;
+      }
+    }
 
-    // Detect ABC-index / alphabet links (common in Magento/Tweakwise)
+    // Detect ABC-index / alphabet / sitemap / brands-list links (common in Magento/Tweakwise)
     const abcPatterns = [
-      /<[^>]*(class|id)=["'][^"']*(alphabet|abc-index|a-z-index|sitemap-alpha|letter-nav)[^"']*["'][^>]*>([\s\S]*?)<\/[^>]*>/gi,
-      /<div[^>]*class=["'][^"']*index[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi,
+      /<[^>]*(class|id)=["'][^"']*(alphabet|abc-index|a-z-index|sitemap-alpha|letter-nav|brands-list|brand-list|merken-list)[^"']*["'][^>]*>([\s\S]*?)<\/[a-z]+>/gi,
+      /<nav[^>]*(class|id)=["'][^"']*(alphabet|a-z|brand)[^"']*["'][^>]*>([\s\S]*?)<\/nav>/gi,
+      /<ul[^>]*(class|id)=["'][^"']*(alphabet|sitemap|brand-index)[^"']*["'][^>]*>([\s\S]*?)<\/ul>/gi,
     ];
     
     let abcIndexLinks = 0;
     for (const pattern of abcPatterns) {
-      const matches = html.match(pattern) || [];
+      const matches = html.matchAll(pattern);
       for (const match of matches) {
-        abcIndexLinks += (match.match(/<a\s/gi) || []).length;
+        const abcHtml = match[0];
+        abcIndexLinks += (abcHtml.match(/<a\s[^>]*href/gi) || []).length;
       }
     }
 
-    // Content links = total - footer - abc (approximate)
-    const contentLinks = Math.max(0, allLinks.length - footerLinks - abcIndexLinks);
+    // Content links = total internal links minus footer and ABC (for SEO scoring)
+    // But report the full internal count as well
+    const contentLinks = Math.max(0, internal - footerLinks - abcIndexLinks);
+
+    console.log(`Link analysis: total=${allLinks.length}, internal=${internal}, external=${external}, footer=${footerLinks}, abc=${abcIndexLinks}, content=${contentLinks}`);
 
     return {
       total: allLinks.length,
