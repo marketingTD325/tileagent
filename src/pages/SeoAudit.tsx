@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { scrapePage } from '@/lib/api';
 import { 
   Loader2, Search, AlertTriangle, CheckCircle2, Info, 
   ExternalLink, FileText, Image, Link2, Clock, Zap,
-  BookOpen, Type, AlignLeft
+  BookOpen, Type, AlignLeft, Code, MapPin
 } from 'lucide-react';
 
 interface ContentQuality {
@@ -52,12 +53,26 @@ interface KeywordAnalysis {
   feedback?: string;
 }
 
+interface SeoIssue {
+  type: string;
+  category: string;
+  message: string;
+  priority: string;
+  explanation?: string;
+  location?: string;
+}
+
+interface ImageIssue {
+  src: string;
+  alt: string | null;
+}
+
 interface SeoAnalysis {
   score: number;
   title: string;
   metaDescription: string | null;
   metaDescriptionMissing?: boolean;
-  issues: Array<{ type: string; category: string; message: string; priority: string }>;
+  issues: SeoIssue[];
   recommendations: Array<{ category: string; action: string; impact: string; effort: string }>;
   toneOfVoiceScore?: {
     pragmatisch: number;
@@ -69,6 +84,8 @@ interface SeoAnalysis {
   keywordAnalysis?: KeywordAnalysis;
   contentQuality?: ContentQuality;
   linkAnalysis?: LinkAnalysis;
+  imageIssues?: ImageIssue[];
+  schemaTypes?: string[];
   technicalData: {
     titleLength?: number;
     metaDescriptionLength?: number;
@@ -120,6 +137,8 @@ export default function SeoAudit() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<SeoAnalysis | null>(null);
   const [recentAudits, setRecentAudits] = useState<any[]>([]);
+  const [selectedIssue, setSelectedIssue] = useState<SeoIssue | null>(null);
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -166,6 +185,8 @@ export default function SeoAudit() {
       const metadata = scrapeResult.data?.metadata || null;
       const linkAnalysis = scrapeResult.data?.linkAnalysis || null;
       const contentMetrics = scrapeResult.data?.contentMetrics || null;
+      const imageIssues = scrapeResult.data?.imageIssues || [];
+      const schemaTypes = scrapeResult.data?.schemaTypes || [];
       
       // Call seo-analyze with metadata explicitly passed
       const { data: analyzeResult, error: analyzeError } = await supabase.functions.invoke('seo-analyze', {
@@ -175,7 +196,9 @@ export default function SeoAudit() {
           pageContent,
           metadata, // Pass title and description from scraper
           linkAnalysis,
-          contentMetrics
+          contentMetrics,
+          imageIssues, // NEW: Pass image issues
+          schemaTypes  // NEW: Pass schema types
         }
       });
 
@@ -242,9 +265,19 @@ export default function SeoAudit() {
   };
 
   const getIssueIcon = (type: string) => {
-    if (type === 'error') return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    if (type === 'error') return <AlertTriangle className="h-4 w-4 text-destructive" />;
     if (type === 'warning') return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
     return <Info className="h-4 w-4 text-blue-500" />;
+  };
+
+  const handleIssueClick = (issue: SeoIssue) => {
+    setSelectedIssue(issue);
+    setIssueDialogOpen(true);
+  };
+
+  const getSchemaColor = (schema: string): string => {
+    const goodSchemas = ['Product', 'FAQPage', 'BreadcrumbList', 'Organization', 'LocalBusiness'];
+    return goodSchemas.includes(schema) ? 'default' : 'secondary';
   };
 
   const loadSavedAudit = (audit: any) => {
@@ -442,12 +475,16 @@ export default function SeoAudit() {
                     <TabsContent value="issues" className="space-y-2 md:space-y-3">
                       {analysis.issues?.length === 0 ? (
                         <div className="text-center py-6 md:py-8 text-muted-foreground">
-                          <CheckCircle2 className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 text-green-500" />
+                          <CheckCircle2 className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-2 text-green-600" />
                           Geen problemen gevonden!
                         </div>
                       ) : (
                         analysis.issues?.map((issue, i) => (
-                          <div key={i} className="flex items-start gap-2 md:gap-3 p-2 md:p-3 rounded-lg border">
+                          <div 
+                            key={i} 
+                            className="flex items-start gap-2 md:gap-3 p-2 md:p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => handleIssueClick(issue)}
+                          >
                             {getIssueIcon(issue.type)}
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-1 md:gap-2">
@@ -455,6 +492,12 @@ export default function SeoAudit() {
                                 <Badge variant={getPriorityColor(issue.priority)} className="text-xs">
                                   {issue.priority}
                                 </Badge>
+                                {(issue.explanation || issue.location) && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Info className="h-3 w-3 mr-1" />
+                                    Details
+                                  </Badge>
+                                )}
                               </div>
                               <p className="mt-1 text-xs md:text-sm">{issue.message}</p>
                             </div>
@@ -664,6 +707,47 @@ export default function SeoAudit() {
             </div>
           </div>
         )}
+
+        {/* Issue Details Dialog */}
+        <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center gap-2 mb-2">
+                {selectedIssue && getIssueIcon(selectedIssue.type)}
+                <DialogTitle className="text-lg">{selectedIssue?.message}</DialogTitle>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedIssue && (
+                  <>
+                    <Badge variant="outline">{selectedIssue.category}</Badge>
+                    <Badge variant={getPriorityColor(selectedIssue.priority)}>{selectedIssue.priority}</Badge>
+                  </>
+                )}
+              </div>
+            </DialogHeader>
+            {selectedIssue?.explanation && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <span>Waarom is dit belangrijk?</span>
+                </div>
+                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">{selectedIssue.explanation}</p>
+              </div>
+            )}
+            {selectedIssue?.location && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>Waar op te lossen?</span>
+                </div>
+                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">{selectedIssue.location}</p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIssueDialogOpen(false)}>Sluiten</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Recent Audits */}
         <Card>

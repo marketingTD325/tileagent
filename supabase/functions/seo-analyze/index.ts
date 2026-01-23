@@ -37,8 +37,8 @@ serve(async (req) => {
   }
 
   try {
-    // Accept metadata object explicitly from scraper
-    const { url, keyword, pageContent, metadata, linkAnalysis, contentMetrics } = await req.json();
+    // Accept metadata object explicitly from scraper, plus new actionable data
+    const { url, keyword, pageContent, metadata, linkAnalysis, contentMetrics, imageIssues, schemaTypes } = await req.json();
 
     if (!url) {
       return new Response(
@@ -104,6 +104,35 @@ SPECIFIEKE KEYWORD INSTRUCTIES:
 `;
     }
 
+    // Build image issues context
+    let imageIssuesContext = '';
+    if (imageIssues && imageIssues.length > 0) {
+      const sampleIssues = imageIssues.slice(0, 10);
+      imageIssuesContext = `
+AFBEELDINGEN ZONDER ALT TAG (${imageIssues.length} gevonden):
+${sampleIssues.map((img: any) => `- ${img.src}`).join('\n')}
+${imageIssues.length > 10 ? `... en ${imageIssues.length - 10} meer` : ''}
+
+MAAK HIER EEN ISSUE VAN als er veel afbeeldingen zonder alt tag zijn!
+`;
+    }
+
+    // Build schema types context
+    let schemaContext = '';
+    if (schemaTypes && schemaTypes.length > 0) {
+      schemaContext = `
+GEVONDEN SCHEMA.ORG TYPES: ${schemaTypes.join(', ')}
+
+Beoordeel of de schema types relevant zijn voor het paginatype. Product, FAQPage, BreadcrumbList zijn goed.
+`;
+    } else {
+      schemaContext = `
+GEEN SCHEMA.ORG MARKUP GEVONDEN!
+
+Dit is een gemiste kans - adviseer om Product, FAQPage of BreadcrumbList schema toe te voegen.
+`;
+    }
+
     const systemPrompt = `Je bent een expert SEO-analist voor Tegeldepot.nl.
 
 ${TEGELDEPOT_CONTEXT}
@@ -115,6 +144,12 @@ BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst.
 ${linkContext}
 ${metricsContext}
 ${keywordContext}
+${imageIssuesContext}
+${schemaContext}
+
+SPECIALE CHECKS:
+1. Controleer of de Title Tag '- YouTube' bevat. Zo ja, maak een HIGH PRIORITY error met titel "YouTube branding in title". Leg uit dat dit onprofessioneel oogt en autoriteit aantast.
+2. Voor ELKE issue, geef een gedetailleerde 'explanation' (waarom is dit slecht voor SEO?) en 'location' (waar precies dit te fixen, bijv. "Meta Settings in Magento", "Header Template", "Alt tag in CMS").
 
 BEOORDEEL OP:
 1. Title tag (lengte 50-60 karakters, zoekwoord vooraan)
@@ -129,9 +164,9 @@ BEOORDEEL OP:
    - Concrete praktische info?
 5. Interne linking (voldoende voor de tekstlengte? Gebruik de CONTENT links, niet footer/abc)
 6. E-E-A-T elementen (expertise, FAQ, etc.)
-7. Afbeeldingen (alt-tags)
+7. Afbeeldingen (alt-tags - gebruik de imageIssues lijst!)
 8. URL structuur
-9. Schema markup mogelijkheden
+9. Schema markup mogelijkheden (gebruik de schemaTypes lijst!)
 
 SCOOR STRENG: Tegeldepot wil pragmatische, no-nonsense content die de klant echt helpt.
 
@@ -142,7 +177,14 @@ JSON formaat:
   "metaDescription": "gevonden meta description (null als niet gevonden)",
   "metaDescriptionMissing": true/false,
   "issues": [
-    {"type": "error|warning|info", "category": "categorie", "message": "beschrijving", "priority": "high|medium|low"}
+    {
+      "type": "error|warning|info", 
+      "category": "categorie", 
+      "message": "korte beschrijving van het probleem", 
+      "priority": "high|medium|low",
+      "explanation": "Uitgebreide uitleg waarom dit slecht is voor SEO en wat de impact is (bijv. 'Google trunceert titels boven 60 karakters, waardoor je belangrijkste zoekwoorden mogelijk niet zichtbaar zijn in de zoekresultaten')",
+      "location": "Waar dit te fixen is (bijv. 'Meta Settings > Page Title in Magento admin', 'Header template in theme files', 'Alt-attributen van afbeeldingen in CMS')"
+    }
   ],
   "recommendations": [
     {"category": "categorie", "action": "concrete aanbeveling in Tegeldepot stijl", "impact": "high|medium|low", "effort": "low|medium|high"}
@@ -391,12 +433,21 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
       externalLinks: linkAnalysis?.external || 0,
       titleLength: metadata?.title?.length || analysis.title?.length || 0,
       metaDescriptionLength: metadata?.description?.length || analysis.metaDescription?.length || 0,
+      // NEW: Add image issues count and schema detection
+      imagesWithoutAlt: imageIssues?.length || 0,
+      hasStructuredData: schemaTypes && schemaTypes.length > 0,
     };
+    
+    // 4. Add actionable data arrays for the frontend
+    analysis.imageIssues = imageIssues || [];
+    analysis.schemaTypes = schemaTypes || [];
 
     console.log('Hard data enforced - AI qualitative, Scraper quantitative:', {
       wordCount: analysis.contentQuality.wordCount,
       contentLinks: analysis.linkAnalysis?.contentLinks,
-      h1Count: analysis.technicalData.h1Count
+      h1Count: analysis.technicalData.h1Count,
+      imagesWithoutAlt: analysis.technicalData.imagesWithoutAlt,
+      schemaTypesFound: analysis.schemaTypes?.length || 0
     });
 
     console.log('SEO analysis completed with score:', analysis.score);

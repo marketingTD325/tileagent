@@ -149,6 +149,74 @@ function analyzeLinkStructure($: cheerio.CheerioAPI, baseUrl: string): {
   }
 }
 
+// Extract images missing alt tags
+function extractImageIssues($: cheerio.CheerioAPI): Array<{ src: string; alt: string | null }> {
+  const imageIssues: Array<{ src: string; alt: string | null }> = [];
+  
+  $('img').each((_, el) => {
+    const alt = $(el).attr('alt');
+    const src = $(el).attr('src') || $(el).attr('data-src') || 'unknown';
+    
+    // Flag if alt is missing, empty, or just whitespace
+    if (!alt || alt.trim() === '') {
+      // Extract just the filename from the src for cleaner display
+      const filename = src.split('/').pop()?.split('?')[0] || src;
+      imageIssues.push({ src: filename, alt: alt || null });
+    }
+  });
+  
+  console.log(`Found ${imageIssues.length} images without proper alt tags`);
+  return imageIssues;
+}
+
+// Extract JSON-LD schema types
+function extractSchemaTypes($: cheerio.CheerioAPI): string[] {
+  const schemaTypes: string[] = [];
+  
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const content = $(el).html();
+      if (content) {
+        const json = JSON.parse(content);
+        
+        // Handle single object or array
+        const items = Array.isArray(json) ? json : [json];
+        
+        for (const item of items) {
+          if (item['@type']) {
+            // Handle array of types or single type
+            const types = Array.isArray(item['@type']) ? item['@type'] : [item['@type']];
+            types.forEach((t: string) => {
+              if (!schemaTypes.includes(t)) {
+                schemaTypes.push(t);
+              }
+            });
+          }
+          
+          // Also check @graph for nested schemas (common pattern)
+          if (item['@graph'] && Array.isArray(item['@graph'])) {
+            for (const graphItem of item['@graph']) {
+              if (graphItem['@type']) {
+                const types = Array.isArray(graphItem['@type']) ? graphItem['@type'] : [graphItem['@type']];
+                types.forEach((t: string) => {
+                  if (!schemaTypes.includes(t)) {
+                    schemaTypes.push(t);
+                  }
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Error parsing JSON-LD schema:', e);
+    }
+  });
+  
+  console.log(`Found ${schemaTypes.length} schema types:`, schemaTypes);
+  return schemaTypes;
+}
+
 // Extract content quality metrics using Cheerio for headings
 function extractContentMetrics($: cheerio.CheerioAPI, markdown: string): {
   wordCount: number;
@@ -290,6 +358,12 @@ serve(async (req) => {
     
     // Extract content metrics using Cheerio
     const contentMetrics = extractContentMetrics($, markdown);
+    
+    // Extract images without alt tags (actionable data)
+    const imageIssues = extractImageIssues($);
+    
+    // Extract JSON-LD schema types
+    const schemaTypes = extractSchemaTypes($);
 
     const result = {
       url: formattedUrl,
@@ -303,14 +377,18 @@ serve(async (req) => {
         ogTitle: scrapedData.metadata?.ogTitle || null,
       },
       linkAnalysis,
-      contentMetrics
+      contentMetrics,
+      imageIssues,
+      schemaTypes
     };
 
     console.log('Scrape successful for:', formattedUrl, {
       title: metadata.title.substring(0, 30),
       metaDescFound: !!metadata.description,
       linkCount: linkAnalysis.total,
-      wordCount: contentMetrics.wordCount
+      wordCount: contentMetrics.wordCount,
+      imageIssuesCount: imageIssues.length,
+      schemaTypesCount: schemaTypes.length
     });
     
     return new Response(
