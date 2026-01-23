@@ -324,28 +324,56 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
       };
     }
 
-    // Ensure contentQuality and linkAnalysis are always present with fallback data
-    if (!analysis.contentQuality) {
-      analysis.contentQuality = {
-        wordCount: contentMetrics?.wordCount || 0,
-        paragraphCount: contentMetrics?.paragraphCount || 0,
-        avgParagraphLength: contentMetrics?.avgParagraphLength || 0,
-        sentenceCount: contentMetrics?.sentenceCount || 0,
-        avgSentenceLength: contentMetrics?.avgSentenceLength || 0,
-        readabilityScore: null,
-        readabilityLevel: null,
-        headingStructureValid: null,
-        headingIssues: []
-      };
-    }
-
-    if (!analysis.linkAnalysis && linkAnalysis) {
+    // ENFORCE HARD DATA: Overwrite AI's metrics with calculated values from scraper
+    // This prevents AI "hallucinations" on quantitative data - AI only provides qualitative advice
+    
+    // 1. Overwrite contentQuality with hard facts from scraper
+    analysis.contentQuality = {
+      ...analysis.contentQuality, // Keep AI's qualitative fields (readabilityScore, readabilityLevel, etc.)
+      // HARD DATA from scraper - never trust AI for these numbers:
+      wordCount: contentMetrics?.wordCount || 0,
+      paragraphCount: contentMetrics?.paragraphCount || 0,
+      avgParagraphLength: contentMetrics?.avgParagraphLength || 0,
+      sentenceCount: contentMetrics?.sentenceCount || 0,
+      avgSentenceLength: contentMetrics?.avgSentenceLength || 0,
+      headingStructure: contentMetrics?.headingStructure || { h1: 0, h2: 0, h3: 0, h4: 0, h5: 0, h6: 0 },
+    };
+    
+    // 2. Overwrite linkAnalysis with hard facts from Cheerio-based scraper
+    if (linkAnalysis) {
       analysis.linkAnalysis = {
-        ...linkAnalysis,
-        isLinkingAdequate: null,
-        linkingFeedback: null
+        // HARD DATA from Cheerio scraper:
+        totalLinks: linkAnalysis.total,
+        internalLinks: linkAnalysis.internal,
+        externalLinks: linkAnalysis.external,
+        footerLinks: linkAnalysis.footerLinks,
+        abcIndexLinks: linkAnalysis.abcIndexLinks,
+        contentLinks: linkAnalysis.contentLinks,
+        // Keep AI's qualitative opinion on linking:
+        isLinkingAdequate: analysis.linkAnalysis?.isLinkingAdequate ?? null,
+        linkingFeedback: analysis.linkAnalysis?.linkingFeedback ?? null,
       };
     }
+    
+    // 3. Overwrite technicalData with hard facts
+    analysis.technicalData = {
+      ...analysis.technicalData,
+      // Hard data from scraper:
+      wordCount: contentMetrics?.wordCount || 0,
+      h1Count: contentMetrics?.headingStructure?.h1 || 0,
+      h2Count: contentMetrics?.headingStructure?.h2 || 0,
+      h3Count: contentMetrics?.headingStructure?.h3 || 0,
+      internalLinks: linkAnalysis?.contentLinks || linkAnalysis?.internal || 0,
+      externalLinks: linkAnalysis?.external || 0,
+      titleLength: metadata?.title?.length || analysis.title?.length || 0,
+      metaDescriptionLength: metadata?.description?.length || analysis.metaDescription?.length || 0,
+    };
+
+    console.log('Hard data enforced - AI qualitative, Scraper quantitative:', {
+      wordCount: analysis.contentQuality.wordCount,
+      contentLinks: analysis.linkAnalysis?.contentLinks,
+      h1Count: analysis.technicalData.h1Count
+    });
 
     console.log('SEO analysis completed with score:', analysis.score);
 
