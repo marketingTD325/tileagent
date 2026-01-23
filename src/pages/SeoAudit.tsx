@@ -44,6 +44,14 @@ interface LinkAnalysis {
   linkingFeedback?: string | null;
 }
 
+interface KeywordAnalysis {
+  inTitle: boolean;
+  inH1: boolean;
+  inMeta: boolean;
+  density: string;
+  feedback?: string;
+}
+
 interface SeoAnalysis {
   score: number;
   title: string;
@@ -58,6 +66,7 @@ interface SeoAnalysis {
     autoritair: number;
     feedback: string;
   };
+  keywordAnalysis?: KeywordAnalysis;
   contentQuality?: ContentQuality;
   linkAnalysis?: LinkAnalysis;
   technicalData: {
@@ -107,6 +116,7 @@ export default function SeoAudit() {
   const { toast } = useToast();
   
   const [url, setUrl] = useState('https://www.tegeldepot.nl/');
+  const [keyword, setKeyword] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<SeoAnalysis | null>(null);
   const [recentAudits, setRecentAudits] = useState<any[]>([]);
@@ -161,6 +171,7 @@ export default function SeoAudit() {
       const { data: analyzeResult, error: analyzeError } = await supabase.functions.invoke('seo-analyze', {
         body: { 
           url, 
+          keyword: keyword.trim() || null, // Pass focus keyword
           pageContent,
           metadata, // Pass title and description from scraper
           linkAnalysis,
@@ -266,37 +277,52 @@ export default function SeoAudit() {
         {/* URL Input */}
         <Card>
           <CardContent className="pt-4 md:pt-6">
-            <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-              <div className="flex-1">
-                <Label htmlFor="url" className="sr-only">URL</Label>
+            <div className="space-y-3 md:space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="url" className="sr-only">URL</Label>
+                  <Input
+                    id="url"
+                    type="url"
+                    placeholder="https://www.tegeldepot.nl/categorie/..."
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="h-10 md:h-12 text-sm md:text-lg"
+                  />
+                </div>
+                <Button 
+                  onClick={handleAnalyze} 
+                  disabled={isAnalyzing}
+                  size="lg"
+                  className="h-10 md:h-12 px-6 md:px-8"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <span className="hidden sm:inline">Analyseren...</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Analyseer</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                <Label htmlFor="keyword" className="text-sm font-medium whitespace-nowrap">
+                  Focus Keyword:
+                </Label>
                 <Input
-                  id="url"
-                  type="url"
-                  placeholder="https://www.tegeldepot.nl/categorie/..."
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="h-10 md:h-12 text-sm md:text-lg"
+                  id="keyword"
+                  type="text"
+                  placeholder="bijv. badkamermeubel, vloertegels, wandtegel..."
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  className="h-9 text-sm flex-1"
                 />
               </div>
-              <Button 
-                onClick={handleAnalyze} 
-                disabled={isAnalyzing}
-                size="lg"
-                className="h-10 md:h-12 px-6 md:px-8"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    <span className="hidden sm:inline">Analyseren...</span>
-                    <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Analyseer</span>
-                  </>
-                )}
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -324,6 +350,46 @@ export default function SeoAudit() {
                         <AlertTriangle className="h-4 w-4" />
                         <span className="text-sm font-medium">Meta description ontbreekt!</span>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Keyword Analysis */}
+                  {analysis.keywordAnalysis && keyword && (
+                    <div className="mt-4 p-3 rounded-lg border text-left">
+                      <h4 className="font-semibold mb-2 text-sm">Focus Keyword: "{keyword}"</h4>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          {analysis.keywordAnalysis.inTitle ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span>In Title</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {analysis.keywordAnalysis.inH1 ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span>In H1</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {analysis.keywordAnalysis.inMeta ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                          )}
+                          <span>In Meta</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-blue-500" />
+                          <span>Density: {analysis.keywordAnalysis.density}</span>
+                        </div>
+                      </div>
+                      {analysis.keywordAnalysis.feedback && (
+                        <p className="mt-2 text-xs text-muted-foreground">{analysis.keywordAnalysis.feedback}</p>
+                      )}
                     </div>
                   )}
                   
