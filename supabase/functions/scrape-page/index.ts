@@ -6,23 +6,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// STRICT meta extraction using cheerio - ONLY from meta tags, NEVER from body text
-function extractMetadata(html: string): { title: string; description: string | null } {
+// Robust metadata extraction using cheerio with priority chains
+// Priority: HTML tags -> OG tags -> Firecrawl metadata object
+function extractMetadataRobust(html: string, firecrawlMetadata?: any): { title: string; description: string | null } {
   const $ = cheerio.load(html);
   
-  // STRICT RULE: Only extract title from <title> or og:title
+  // 1. Robust Title Extraction (Priority: Title Tag -> OG Title -> Firecrawl Metadata)
   const title = $('title').text().trim() || 
-                $('meta[property="og:title"]').attr('content')?.trim() || '';
+                $('meta[property="og:title"]').attr('content')?.trim() || 
+                firecrawlMetadata?.title?.trim() || 
+                '';
   
-  // STRICT RULE: Only extract from meta[name="description"] or og:description
-  // NEVER fall back to body text, paragraphs, or any other content
-  const description = $('meta[name="description"]').attr('content')?.trim() ||
-                      $('meta[property="og:description"]').attr('content')?.trim() ||
-                      null; // Return null if not found - NO FALLBACK
+  // 2. Robust Description Extraction (Priority: Meta Name -> OG Description -> Firecrawl Metadata)
+  // IMPORTANT: Never fall back to body text - only use proper meta tags
+  const metaDesc = $('meta[name="description"]').attr('content')?.trim();
+  const ogDesc = $('meta[property="og:description"]').attr('content')?.trim();
+  const firecrawlDesc = firecrawlMetadata?.description?.trim();
   
-  console.log('Metadata extracted:', { 
-    title: title.substring(0, 50), 
+  // Use first available, but return null if none found (strict mode)
+  const description = metaDesc || ogDesc || firecrawlDesc || null;
+  
+  // 3. Log results for debugging
+  console.log('Extracted Metadata:', { 
+    title: title.substring(0, 50) + (title.length > 50 ? '...' : ''),
+    titleSource: metaDesc ? 'title-tag' : ($('meta[property="og:title"]').attr('content') ? 'og:title' : 'firecrawl'),
     descriptionFound: !!description,
+    descriptionSource: metaDesc ? 'meta-name' : (ogDesc ? 'og:description' : (firecrawlDesc ? 'firecrawl' : 'none')),
     descriptionLength: description?.length || 0 
   });
   
@@ -259,8 +268,8 @@ serve(async (req) => {
     const html = scrapedData.html || '';
     const markdown = scrapedData.markdown || '';
     
-    // Extract metadata using cheerio - STRICT, no body text fallback
-    const metadata = extractMetadata(html);
+    // Extract metadata using robust cheerio-based extraction with priority chain
+    const metadata = extractMetadataRobust(html, scrapedData.metadata);
     
     // Analyze link structure
     const linkAnalysis = analyzeLinkStructure(html, formattedUrl);
