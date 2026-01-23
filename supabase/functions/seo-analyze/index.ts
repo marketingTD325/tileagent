@@ -37,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    const { url, pageContent } = await req.json();
+    const { url, pageContent, linkAnalysis, contentMetrics } = await req.json();
 
     if (!url) {
       return new Response(
@@ -57,6 +57,36 @@ serve(async (req) => {
 
     console.log('Analyzing SEO for URL:', url);
 
+    // Build link analysis context if available
+    let linkContext = '';
+    if (linkAnalysis) {
+      linkContext = `
+LINK ANALYSE (vooraf berekend):
+- Totaal links: ${linkAnalysis.total || 0}
+- Interne links: ${linkAnalysis.internal || 0}
+- Externe links: ${linkAnalysis.external || 0}
+- Footer links: ${linkAnalysis.footerLinks || 0}
+- ABC-index/alphabet links: ${linkAnalysis.abcIndexLinks || 0}
+- Content links (excl. navigatie): ${linkAnalysis.contentLinks || 0}
+
+BELANGRIJK: Tel voor de SEO-score alleen de "Content links" mee, niet de footer/ABC-index links!
+`;
+    }
+
+    // Build content metrics context if available
+    let metricsContext = '';
+    if (contentMetrics) {
+      metricsContext = `
+CONTENT METRICS (vooraf berekend):
+- Woorden: ${contentMetrics.wordCount || 0}
+- Paragrafen: ${contentMetrics.paragraphCount || 0}
+- Gemiddelde paragraaflengte: ${contentMetrics.avgParagraphLength || 0} woorden
+- Zinnen: ${contentMetrics.sentenceCount || 0}
+- Gemiddelde zinslengte: ${contentMetrics.avgSentenceLength || 0} woorden
+- Headings: H1=${contentMetrics.headingStructure?.h1 || 0}, H2=${contentMetrics.headingStructure?.h2 || 0}, H3=${contentMetrics.headingStructure?.h3 || 0}
+`;
+    }
+
     const systemPrompt = `Je bent een expert SEO-analist voor Tegeldepot.nl.
 
 ${TEGELDEPOT_CONTEXT}
@@ -65,16 +95,21 @@ Analyseer de gegeven pagina-inhoud en geef een gedetailleerde SEO-audit.
 
 BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst.
 
+${linkContext}
+${metricsContext}
+
 BEOORDEEL OP:
 1. Title tag (lengte 50-60 karakters, zoekwoord vooraan)
 2. Meta description (lengte 150-160 karakters, call-to-action)
+   - LET OP: Als de meta description null of leeg is, geef dit expliciet aan als probleem!
+   - Gebruik NOOIT body tekst als vervanging voor een ontbrekende meta description
 3. Heading structuur (H1-H6 hiërarchie)
 4. Content kwaliteit:
    - Volgt het de Tegeldepot tone of voice?
    - Is het oplossingsgericht met keuzehulp?
    - Geen vage algemeenheden?
    - Concrete praktische info?
-5. Interne linking (voldoende voor de tekstlengte?)
+5. Interne linking (voldoende voor de tekstlengte? Gebruik de CONTENT links, niet footer/abc)
 6. E-E-A-T elementen (expertise, FAQ, etc.)
 7. Afbeeldingen (alt-tags)
 8. URL structuur
@@ -86,7 +121,8 @@ JSON formaat:
 {
   "score": 0-100,
   "title": "gevonden title",
-  "metaDescription": "gevonden meta description",
+  "metaDescription": "gevonden meta description (null als niet gevonden)",
+  "metaDescriptionMissing": true/false,
   "issues": [
     {"type": "error|warning|info", "category": "categorie", "message": "beschrijving", "priority": "high|medium|low"}
   ],
@@ -100,17 +136,38 @@ JSON formaat:
     "autoritair": 0-100,
     "feedback": "specifieke feedback over tone of voice"
   },
+  "contentQuality": {
+    "wordCount": ${contentMetrics?.wordCount || 0},
+    "paragraphCount": ${contentMetrics?.paragraphCount || 0},
+    "avgParagraphLength": ${contentMetrics?.avgParagraphLength || 0},
+    "sentenceCount": ${contentMetrics?.sentenceCount || 0},
+    "avgSentenceLength": ${contentMetrics?.avgSentenceLength || 0},
+    "readabilityScore": 0-100,
+    "readabilityLevel": "eenvoudig|gemiddeld|complex",
+    "headingStructureValid": true/false,
+    "headingIssues": ["lijst van heading problemen"]
+  },
+  "linkAnalysis": {
+    "totalLinks": ${linkAnalysis?.total || 0},
+    "internalLinks": ${linkAnalysis?.internal || 0},
+    "externalLinks": ${linkAnalysis?.external || 0},
+    "footerLinks": ${linkAnalysis?.footerLinks || 0},
+    "abcIndexLinks": ${linkAnalysis?.abcIndexLinks || 0},
+    "contentLinks": ${linkAnalysis?.contentLinks || 0},
+    "isLinkingAdequate": true/false,
+    "linkingFeedback": "feedback over de interne linking strategie"
+  },
   "technicalData": {
     "titleLength": 0,
     "metaDescriptionLength": 0,
-    "h1Count": 0,
-    "h2Count": 0,
-    "h3Count": 0,
+    "h1Count": ${contentMetrics?.headingStructure?.h1 || 0},
+    "h2Count": ${contentMetrics?.headingStructure?.h2 || 0},
+    "h3Count": ${contentMetrics?.headingStructure?.h3 || 0},
     "imageCount": 0,
     "imagesWithoutAlt": 0,
-    "internalLinks": 0,
-    "externalLinks": 0,
-    "wordCount": 0,
+    "internalLinks": ${linkAnalysis?.contentLinks || linkAnalysis?.internal || 0},
+    "externalLinks": ${linkAnalysis?.external || 0},
+    "wordCount": ${contentMetrics?.wordCount || 0},
     "estimatedReadTime": "X min",
     "hasFaq": false,
     "hasStructuredData": false
@@ -124,7 +181,8 @@ URL: ${url}
 Pagina inhoud:
 ${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}
 
-Wees kritisch en concreet. Geef specifieke verbeterpunten in de Tegeldepot tone of voice.`;
+Wees kritisch en concreet. Geef specifieke verbeterpunten in de Tegeldepot tone of voice.
+Let vooral op of de meta description daadwerkelijk aanwezig is (niet verward met body tekst zoals "winkelwagen" berichten).`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -181,11 +239,47 @@ Wees kritisch en concreet. Geef specifieke verbeterpunten in de Tegeldepot tone 
       analysis = {
         score: 50,
         title: 'Parsing error',
-        metaDescription: '',
+        metaDescription: null,
+        metaDescriptionMissing: true,
         issues: [{ type: 'error', category: 'Analyse', message: 'Kon de analyse niet voltooien', priority: 'high' }],
         recommendations: [],
         toneOfVoiceScore: { pragmatisch: 0, oplossingsgericht: 0, concreet: 0, autoritair: 0, feedback: '' },
+        contentQuality: {
+          wordCount: contentMetrics?.wordCount || 0,
+          paragraphCount: contentMetrics?.paragraphCount || 0,
+          avgParagraphLength: contentMetrics?.avgParagraphLength || 0,
+          sentenceCount: contentMetrics?.sentenceCount || 0,
+          avgSentenceLength: contentMetrics?.avgSentenceLength || 0,
+          readabilityScore: null,
+          readabilityLevel: null,
+          headingStructureValid: null,
+          headingIssues: []
+        },
+        linkAnalysis: linkAnalysis || null,
         technicalData: {}
+      };
+    }
+
+    // Ensure contentQuality and linkAnalysis are always present with fallback data
+    if (!analysis.contentQuality) {
+      analysis.contentQuality = {
+        wordCount: contentMetrics?.wordCount || 0,
+        paragraphCount: contentMetrics?.paragraphCount || 0,
+        avgParagraphLength: contentMetrics?.avgParagraphLength || 0,
+        sentenceCount: contentMetrics?.sentenceCount || 0,
+        avgSentenceLength: contentMetrics?.avgSentenceLength || 0,
+        readabilityScore: null,
+        readabilityLevel: null,
+        headingStructureValid: null,
+        headingIssues: []
+      };
+    }
+
+    if (!analysis.linkAnalysis && linkAnalysis) {
+      analysis.linkAnalysis = {
+        ...linkAnalysis,
+        isLinkingAdequate: null,
+        linkingFeedback: null
       };
     }
 
