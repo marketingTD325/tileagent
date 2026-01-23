@@ -38,7 +38,7 @@ serve(async (req) => {
 
   try {
     // Accept metadata object explicitly from scraper
-    const { url, pageContent, metadata, linkAnalysis, contentMetrics } = await req.json();
+    const { url, keyword, pageContent, metadata, linkAnalysis, contentMetrics } = await req.json();
 
     if (!url) {
       return new Response(
@@ -56,7 +56,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Analyzing SEO for URL:', url);
+    console.log('Analyzing SEO for URL:', url, keyword ? `with focus keyword: "${keyword}"` : 'without focus keyword');
 
     // Build link analysis context if available
     let linkContext = '';
@@ -88,6 +88,22 @@ CONTENT METRICS (vooraf berekend):
 `;
     }
 
+    // Build keyword analysis context if available
+    let keywordContext = '';
+    if (keyword) {
+      keywordContext = `
+>>> FOCUS KEYWORD: "${keyword}"
+
+SPECIFIEKE KEYWORD INSTRUCTIES:
+1. Controleer of het focus keyword voorkomt in de Title tag
+2. Controleer of het focus keyword voorkomt in de H1
+3. Controleer of het focus keyword voorkomt in de Meta Description
+4. Bereken de Keyword Density in de body tekst (aantal keer keyword / totaal woorden * 100)
+5. PAS STRENGE STRAF TOE als het keyword NIET voorkomt in Title of H1!
+6. Geef concrete feedback over hoe het keyword beter gebruikt kan worden
+`;
+    }
+
     const systemPrompt = `Je bent een expert SEO-analist voor Tegeldepot.nl.
 
 ${TEGELDEPOT_CONTEXT}
@@ -98,6 +114,7 @@ BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst.
 
 ${linkContext}
 ${metricsContext}
+${keywordContext}
 
 BEOORDEEL OP:
 1. Title tag (lengte 50-60 karakters, zoekwoord vooraan)
@@ -136,7 +153,14 @@ JSON formaat:
     "concreet": 0-100,
     "autoritair": 0-100,
     "feedback": "specifieke feedback over tone of voice"
-  },
+  },${keyword ? `
+  "keywordAnalysis": {
+    "inTitle": true/false,
+    "inH1": true/false,
+    "inMeta": true/false,
+    "density": "X.X%",
+    "feedback": "specifieke feedback over keyword gebruik en optimalisatie"
+  },` : ''}
   "contentQuality": {
     "wordCount": ${contentMetrics?.wordCount || 0},
     "paragraphCount": ${contentMetrics?.paragraphCount || 0},
