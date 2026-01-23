@@ -29,6 +29,14 @@ interface ContentQuality {
   readabilityLevel?: string | null;
   headingStructureValid?: boolean | null;
   headingIssues?: string[];
+  headingStructure?: {
+    h1: number;
+    h2: number;
+    h3: number;
+    h4: number;
+    h5: number;
+    h6: number;
+  };
 }
 
 interface LinkAnalysis {
@@ -65,6 +73,32 @@ interface SeoIssue {
 interface ImageIssue {
   src: string;
   alt: string | null;
+  issue?: string;
+}
+
+interface TruncationInfo {
+  contentTruncated: boolean;
+  originalWordCount: number;
+  analyzedWordCount: number;
+}
+
+interface MetadataSources {
+  titleSource?: 'title-tag' | 'og:title' | 'firecrawl' | 'none';
+  descriptionSource?: 'meta-name' | 'og:description' | 'firecrawl' | 'none';
+}
+
+interface SeoIssue {
+  type: string;
+  category: string;
+  message: string;
+  priority: string;
+  explanation?: string;
+  location?: string;
+}
+
+interface ImageIssue {
+  src: string;
+  alt: string | null;
 }
 
 interface SeoAnalysis {
@@ -86,6 +120,8 @@ interface SeoAnalysis {
   linkAnalysis?: LinkAnalysis;
   imageIssues?: ImageIssue[];
   schemaTypes?: string[];
+  truncationInfo?: TruncationInfo;
+  metadataSources?: MetadataSources;
   technicalData: {
     titleLength?: number;
     metaDescriptionLength?: number;
@@ -207,7 +243,7 @@ export default function SeoAudit() {
       if (analyzeResult.success && analyzeResult.data) {
         setAnalysis(analyzeResult.data);
 
-        // Save to database
+        // Save complete audit data to database
         await supabase.from('seo_audits').insert({
           user_id: user!.id,
           url,
@@ -217,6 +253,19 @@ export default function SeoAudit() {
           issues: analyzeResult.data.issues,
           recommendations: analyzeResult.data.recommendations,
           technical_data: analyzeResult.data.technicalData,
+          // NEW: Save complete analysis data
+          content_quality: analyzeResult.data.contentQuality,
+          link_analysis: analyzeResult.data.linkAnalysis,
+          keyword_analysis: analyzeResult.data.keywordAnalysis,
+          tone_of_voice_score: analyzeResult.data.toneOfVoiceScore,
+          image_issues: analyzeResult.data.imageIssues,
+          schema_types: analyzeResult.data.schemaTypes,
+          focus_keyword: keyword.trim() || null,
+          metadata_sources: scrapeResult.data?.metadata ? {
+            titleSource: scrapeResult.data.metadata.titleSource,
+            descriptionSource: scrapeResult.data.metadata.descriptionSource
+          } : null,
+          truncation_info: analyzeResult.data.truncationInfo
         });
 
         // Log activity
@@ -282,7 +331,11 @@ export default function SeoAudit() {
 
   const loadSavedAudit = (audit: any) => {
     setUrl(audit.url);
-    // Convert database format to analysis format
+    // Restore focus keyword if saved
+    if (audit.focus_keyword) {
+      setKeyword(audit.focus_keyword);
+    }
+    // Convert database format to analysis format with ALL saved fields
     const savedAnalysis: SeoAnalysis = {
       score: audit.score || 0,
       title: audit.title || '',
@@ -290,6 +343,15 @@ export default function SeoAudit() {
       issues: (audit.issues as any[]) || [],
       recommendations: (audit.recommendations as any[]) || [],
       technicalData: (audit.technical_data as any) || {},
+      // Restore complete analysis data
+      contentQuality: (audit.content_quality as ContentQuality) || undefined,
+      linkAnalysis: (audit.link_analysis as LinkAnalysis) || undefined,
+      keywordAnalysis: (audit.keyword_analysis as KeywordAnalysis) || undefined,
+      toneOfVoiceScore: audit.tone_of_voice_score || undefined,
+      imageIssues: (audit.image_issues as ImageIssue[]) || undefined,
+      schemaTypes: audit.schema_types || undefined,
+      truncationInfo: audit.truncation_info || undefined,
+      metadataSources: audit.metadata_sources || undefined,
     };
     setAnalysis(savedAnalysis);
     toast({ title: 'Audit geladen', description: `Score: ${audit.score}/100` });
@@ -363,6 +425,35 @@ export default function SeoAudit() {
         {/* Analysis Results */}
         {analysis && (
           <div className="space-y-4 md:space-y-6">
+            {/* Content Truncation Warning */}
+            {analysis.truncationInfo?.contentTruncated && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
+                <Info className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="text-sm">
+                  <span className="font-medium text-amber-800 dark:text-amber-300">Content afgekapt voor analyse: </span>
+                  <span className="text-amber-700 dark:text-amber-400">
+                    De pagina bevat {analysis.truncationInfo.originalWordCount.toLocaleString('nl-NL')} woorden, 
+                    maar alleen de eerste {analysis.truncationInfo.analyzedWordCount.toLocaleString('nl-NL')} zijn geanalyseerd om AI-limieten te respecteren.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Metadata Source Indicators */}
+            {analysis.metadataSources && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {analysis.metadataSources.titleSource && (
+                  <Badge variant="outline" className="font-normal">
+                    Title bron: <span className="font-medium ml-1">{analysis.metadataSources.titleSource}</span>
+                  </Badge>
+                )}
+                {analysis.metadataSources.descriptionSource && (
+                  <Badge variant="outline" className="font-normal">
+                    Description bron: <span className="font-medium ml-1">{analysis.metadataSources.descriptionSource}</span>
+                  </Badge>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Score Card */}
               <Card className="lg:col-span-1">
