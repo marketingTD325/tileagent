@@ -442,12 +442,54 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
     analysis.imageIssues = imageIssues || [];
     analysis.schemaTypes = schemaTypes || [];
 
+    // 5. ENFORCE METADATA STRINGS: Never trust AI for these fields
+    analysis.title = metadata?.title || analysis.title || null;
+    analysis.metaDescription = metadata?.description || analysis.metaDescription || null;
+    analysis.metaDescriptionMissing = !metadata?.description;
+
+    // 6. FILTER AI HALLUCINATIONS: Remove issues that contradict hard data
+    const h1Count = contentMetrics?.headingStructure?.h1 || 0;
+    const metaDescLength = metadata?.description?.length || 0;
+    const wordCount = contentMetrics?.wordCount || 0;
+
+    if (analysis.issues && Array.isArray(analysis.issues)) {
+      analysis.issues = analysis.issues.filter((issue: { message?: string }) => {
+        const msg = (issue.message || '').toLowerCase();
+        
+        // If AI says H1 is missing but scraper found H1s, remove the issue
+        if ((msg.includes('h1') && (msg.includes('ontbreekt') || msg.includes('missing') || msg.includes('geen h1'))) && h1Count > 0) {
+          console.log('Filtered hallucinated issue: H1 missing (but h1Count=' + h1Count + ')');
+          return false;
+        }
+        
+        // If AI says meta description is missing but scraper found one, remove the issue
+        if ((msg.includes('meta description') || msg.includes('metadescription') || msg.includes('beschrijving')) 
+            && (msg.includes('ontbreekt') || msg.includes('missing') || msg.includes('geen')) 
+            && metaDescLength > 0) {
+          console.log('Filtered hallucinated issue: Meta description missing (but length=' + metaDescLength + ')');
+          return false;
+        }
+        
+        // If AI says too few words but scraper found > 500, remove the issue
+        if ((msg.includes('woorden') || msg.includes('words') || msg.includes('content')) 
+            && (msg.includes('te weinig') || msg.includes('too few') || msg.includes('kort') || msg.includes('short'))
+            && wordCount > 500) {
+          console.log('Filtered hallucinated issue: Too few words (but wordCount=' + wordCount + ')');
+          return false;
+        }
+        
+        return true;
+      });
+    }
+
     console.log('Hard data enforced - AI qualitative, Scraper quantitative:', {
       wordCount: analysis.contentQuality.wordCount,
       contentLinks: analysis.linkAnalysis?.contentLinks,
       h1Count: analysis.technicalData.h1Count,
       imagesWithoutAlt: analysis.technicalData.imagesWithoutAlt,
-      schemaTypesFound: analysis.schemaTypes?.length || 0
+      schemaTypesFound: analysis.schemaTypes?.length || 0,
+      metaDescriptionEnforced: !!metadata?.description,
+      issuesAfterFilter: analysis.issues?.length || 0
     });
 
     // HARDCODED CHECK: YouTube Branding in Title
