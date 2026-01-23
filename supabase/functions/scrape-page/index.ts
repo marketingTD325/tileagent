@@ -8,14 +8,32 @@ const corsHeaders = {
 
 // Robust metadata extraction using cheerio with priority chains
 // Priority: HTML tags -> OG tags -> Firecrawl metadata object
-function extractMetadataRobust(html: string, firecrawlMetadata?: any): { title: string; description: string | null } {
+function extractMetadataRobust(html: string, firecrawlMetadata?: any): { 
+  title: string; 
+  description: string | null;
+  titleSource: 'title-tag' | 'og:title' | 'firecrawl' | 'none';
+  descriptionSource: 'meta-name' | 'og:description' | 'firecrawl' | 'none';
+} {
   const $ = cheerio.load(html);
   
   // 1. Robust Title Extraction (Priority: Title Tag -> OG Title -> Firecrawl Metadata)
-  const title = $('title').text().trim() || 
-                $('meta[property="og:title"]').attr('content')?.trim() || 
-                firecrawlMetadata?.title?.trim() || 
-                '';
+  const titleFromTag = $('title').text().trim();
+  const titleFromOg = $('meta[property="og:title"]').attr('content')?.trim();
+  const titleFromFirecrawl = firecrawlMetadata?.title?.trim();
+  
+  let title = '';
+  let titleSource: 'title-tag' | 'og:title' | 'firecrawl' | 'none' = 'none';
+  
+  if (titleFromTag) {
+    title = titleFromTag;
+    titleSource = 'title-tag';
+  } else if (titleFromOg) {
+    title = titleFromOg;
+    titleSource = 'og:title';
+  } else if (titleFromFirecrawl) {
+    title = titleFromFirecrawl;
+    titleSource = 'firecrawl';
+  }
   
   // 2. Robust Description Extraction (Priority: Meta Name -> OG Description -> Firecrawl Metadata)
   // IMPORTANT: Never fall back to body text - only use proper meta tags
@@ -23,19 +41,30 @@ function extractMetadataRobust(html: string, firecrawlMetadata?: any): { title: 
   const ogDesc = $('meta[property="og:description"]').attr('content')?.trim();
   const firecrawlDesc = firecrawlMetadata?.description?.trim();
   
-  // Use first available, but return null if none found (strict mode)
-  const description = metaDesc || ogDesc || firecrawlDesc || null;
+  let description: string | null = null;
+  let descriptionSource: 'meta-name' | 'og:description' | 'firecrawl' | 'none' = 'none';
+  
+  if (metaDesc) {
+    description = metaDesc;
+    descriptionSource = 'meta-name';
+  } else if (ogDesc) {
+    description = ogDesc;
+    descriptionSource = 'og:description';
+  } else if (firecrawlDesc) {
+    description = firecrawlDesc;
+    descriptionSource = 'firecrawl';
+  }
   
   // 3. Log results for debugging
   console.log('Extracted Metadata:', { 
     title: title.substring(0, 50) + (title.length > 50 ? '...' : ''),
-    titleSource: metaDesc ? 'title-tag' : ($('meta[property="og:title"]').attr('content') ? 'og:title' : 'firecrawl'),
+    titleSource,
     descriptionFound: !!description,
-    descriptionSource: metaDesc ? 'meta-name' : (ogDesc ? 'og:description' : (firecrawlDesc ? 'firecrawl' : 'none')),
+    descriptionSource,
     descriptionLength: description?.length || 0 
   });
   
-  return { title, description };
+  return { title, description, titleSource, descriptionSource };
 }
 
 // Extract and categorize ALL links using Cheerio for accurate HTML parsing
@@ -149,23 +178,55 @@ function analyzeLinkStructure($: cheerio.CheerioAPI, baseUrl: string): {
   }
 }
 
-// Extract images missing alt tags
-function extractImageIssues($: cheerio.CheerioAPI): Array<{ src: string; alt: string | null }> {
-  const imageIssues: Array<{ src: string; alt: string | null }> = [];
+// Extract images missing alt tags with improved detection
+function extractImageIssues($: cheerio.CheerioAPI): Array<{ src: string; alt: string | null; issue: string }> {
+  const imageIssues: Array<{ src: string; alt: string | null; issue: string }> = [];
+  
+  // Generic/useless alt text patterns
+  const genericAltPatterns = [
+    /^image$/i,
+    /^photo$/i,
+    /^picture$/i,
+    /^img$/i,
+    /^afbeelding$/i,
+    /^foto$/i,
+    /^\d+$/,  // Just numbers
+    /^untitled$/i,
+    /^placeholder$/i,
+    /^dsc\d+$/i,  // Camera filenames like DSC1234
+    /^img_?\d+$/i,  // Camera filenames like IMG_1234
+  ];
   
   $('img').each((_, el) => {
     const alt = $(el).attr('alt');
-    const src = $(el).attr('src') || $(el).attr('data-src') || 'unknown';
+    // Check multiple lazy-loading patterns
+    const src = $(el).attr('src') 
+      || $(el).attr('data-src') 
+      || $(el).attr('data-lazy-src')
+      || $(el).attr('data-original')
+      || $(el).attr('data-lazy')
+      || 'unknown';
     
-    // Flag if alt is missing, empty, or just whitespace
+    // Extract just the filename from the src for cleaner display
+    const filename = src.split('/').pop()?.split('?')[0] || src;
+    
+    // Case 1: Alt is completely missing or empty
     if (!alt || alt.trim() === '') {
-      // Extract just the filename from the src for cleaner display
-      const filename = src.split('/').pop()?.split('?')[0] || src;
-      imageIssues.push({ src: filename, alt: alt || null });
+      imageIssues.push({ src: filename, alt: null, issue: 'missing' });
+      return;
+    }
+    
+    // Case 2: Alt is generic/useless text
+    const altTrimmed = alt.trim();
+    for (const pattern of genericAltPatterns) {
+      if (pattern.test(altTrimmed)) {
+        imageIssues.push({ src: filename, alt: altTrimmed, issue: 'generic' });
+        return;
+      }
     }
   });
   
-  console.log(`Found ${imageIssues.length} images without proper alt tags`);
+  console.log(`Found ${imageIssues.length} images with alt issues (missing or generic)`);
   return imageIssues;
 }
 
@@ -232,6 +293,9 @@ function extractContentMetrics($: cheerio.CheerioAPI, markdown: string): {
   };
   sentenceCount: number;
   avgSentenceLength: number;
+  h1Text: string | null;  // NEW: Extract H1 text for keyword analysis
+  contentTruncated: boolean;
+  originalWordCount: number;
 } {
   // Count headings using Cheerio for accuracy
   const h1Count = $('h1').length;
@@ -240,6 +304,9 @@ function extractContentMetrics($: cheerio.CheerioAPI, markdown: string): {
   const h4Count = $('h4').length;
   const h5Count = $('h5').length;
   const h6Count = $('h6').length;
+
+  // NEW: Extract H1 text for keyword analysis
+  const h1Text = $('h1').first().text().trim() || null;
 
   // Use markdown for text analysis (cleaner)
   const cleanText = markdown
@@ -255,6 +322,10 @@ function extractContentMetrics($: cheerio.CheerioAPI, markdown: string): {
   // Word count
   const words = cleanText.split(/\s+/).filter(w => w.length > 0);
   const wordCount = words.length;
+  const originalWordCount = wordCount;
+  
+  // Content truncation flag (will be set by analyze function)
+  const contentTruncated = false;
 
   // Avg paragraph length
   const avgParagraphLength = paragraphCount > 0 
@@ -281,7 +352,10 @@ function extractContentMetrics($: cheerio.CheerioAPI, markdown: string): {
       h6: h6Count,
     },
     sentenceCount,
-    avgSentenceLength
+    avgSentenceLength,
+    h1Text,
+    contentTruncated,
+    originalWordCount
   };
 }
 
@@ -380,6 +454,8 @@ serve(async (req) => {
       metadata: {
         title: metadata.title,
         description: metadata.description, // Can be null if not found - NO FALLBACK
+        titleSource: metadata.titleSource,
+        descriptionSource: metadata.descriptionSource,
         ogImage: scrapedData.metadata?.ogImage || null,
         ogTitle: scrapedData.metadata?.ogTitle || null,
       },
@@ -391,7 +467,10 @@ serve(async (req) => {
 
     console.log('Scrape successful for:', formattedUrl, {
       title: metadata.title.substring(0, 30),
+      titleSource: metadata.titleSource,
       metaDescFound: !!metadata.description,
+      descriptionSource: metadata.descriptionSource,
+      h1Text: contentMetrics.h1Text?.substring(0, 30) || 'none',
       linkCount: linkAnalysis.total,
       wordCount: contentMetrics.wordCount,
       imageIssuesCount: imageIssues.length,
