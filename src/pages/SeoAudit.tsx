@@ -77,20 +77,27 @@ interface SeoAnalysis {
   };
 }
 
-// Helper function for safe value display
-const displayValue = (value: number | string | undefined | null, suffix = ''): string => {
-  if (value === undefined || value === null) return 'N/A';
-  if (typeof value === 'number' && isNaN(value)) return 'N/A';
+// Helper function for safe value display - DEFENSIVE with optional chaining
+const displayValue = (value: number | string | undefined | null, suffix = '', fallback = 'N/A'): string => {
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback;
+  if (typeof value === 'string' && value.trim() === '') return fallback;
   return `${value}${suffix}`;
+};
+
+// Safe number display with default 0
+const displayNumber = (value: number | undefined | null, fallback = 0): number => {
+  if (value === undefined || value === null || isNaN(value) || !isFinite(value)) return fallback;
+  return value;
 };
 
 // Helper to get readability color
 const getReadabilityColor = (level: string | null | undefined): string => {
   if (!level) return 'text-muted-foreground';
   const lower = level.toLowerCase();
-  if (lower === 'eenvoudig' || lower === 'simple') return 'text-green-600';
-  if (lower === 'gemiddeld' || lower === 'medium') return 'text-blue-600';
-  if (lower === 'complex') return 'text-orange-600';
+  if (lower === 'eenvoudig' || lower === 'simple' || lower === 'easy') return 'text-green-600';
+  if (lower === 'gemiddeld' || lower === 'medium' || lower === 'average') return 'text-blue-600';
+  if (lower === 'complex' || lower === 'difficult' || lower === 'hard') return 'text-orange-600';
   return 'text-muted-foreground';
 };
 
@@ -412,33 +419,33 @@ export default function SeoAudit() {
                     {/* Content Quality Tab */}
                     <TabsContent value="content">
                       <div className="space-y-4">
-                        {/* Content Metrics Grid */}
+                        {/* Content Metrics Grid - Defensive rendering */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
                           <div className="p-3 md:p-4 rounded-lg bg-muted">
                             <FileText className="h-4 w-4 md:h-5 md:w-5 mb-1 md:mb-2 text-muted-foreground" />
                             <p className="text-xl md:text-2xl font-bold">
-                              {displayValue(analysis.contentQuality?.wordCount || analysis.technicalData?.wordCount)}
+                              {displayValue(analysis?.contentQuality?.wordCount ?? analysis?.technicalData?.wordCount ?? null)}
                             </p>
                             <p className="text-xs md:text-sm text-muted-foreground">Woorden</p>
                           </div>
                           <div className="p-3 md:p-4 rounded-lg bg-muted">
                             <AlignLeft className="h-4 w-4 md:h-5 md:w-5 mb-1 md:mb-2 text-muted-foreground" />
                             <p className="text-xl md:text-2xl font-bold">
-                              {displayValue(analysis.contentQuality?.paragraphCount)}
+                              {displayValue(analysis?.contentQuality?.paragraphCount ?? null)}
                             </p>
                             <p className="text-xs md:text-sm text-muted-foreground">Paragrafen</p>
                           </div>
                           <div className="p-3 md:p-4 rounded-lg bg-muted">
                             <Type className="h-4 w-4 md:h-5 md:w-5 mb-1 md:mb-2 text-muted-foreground" />
                             <p className="text-xl md:text-2xl font-bold">
-                              {displayValue(analysis.contentQuality?.avgSentenceLength)}
+                              {displayValue(analysis?.contentQuality?.avgSentenceLength ?? null)}
                             </p>
                             <p className="text-xs md:text-sm text-muted-foreground">Gem. zinslengte</p>
                           </div>
                           <div className="p-3 md:p-4 rounded-lg bg-muted">
                             <BookOpen className="h-4 w-4 md:h-5 md:w-5 mb-1 md:mb-2 text-muted-foreground" />
-                            <p className={`text-xl md:text-2xl font-bold ${getReadabilityColor(analysis.contentQuality?.readabilityLevel)}`}>
-                              {displayValue(analysis.contentQuality?.readabilityLevel)}
+                            <p className={`text-xl md:text-2xl font-bold ${getReadabilityColor(analysis?.contentQuality?.readabilityLevel ?? null)}`}>
+                              {displayValue(analysis?.contentQuality?.readabilityLevel ?? null)}
                             </p>
                             <p className="text-xs md:text-sm text-muted-foreground">Leesbaarheid</p>
                           </div>
@@ -455,24 +462,24 @@ export default function SeoAudit() {
                           </div>
                         )}
 
-                        {/* Heading Structure */}
+                        {/* Heading Structure - Defensive rendering */}
                         <div className="p-4 rounded-lg border">
                           <h4 className="font-medium mb-3 text-sm">Heading Structuur</h4>
                           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                             <div className="text-center p-2 bg-muted rounded">
-                              <p className="text-lg font-bold">{displayValue(analysis.technicalData?.h1Count)}</p>
+                              <p className="text-lg font-bold">{displayValue(analysis?.technicalData?.h1Count ?? null)}</p>
                               <p className="text-xs text-muted-foreground">H1</p>
                             </div>
                             <div className="text-center p-2 bg-muted rounded">
-                              <p className="text-lg font-bold">{displayValue(analysis.technicalData?.h2Count)}</p>
+                              <p className="text-lg font-bold">{displayValue(analysis?.technicalData?.h2Count ?? null)}</p>
                               <p className="text-xs text-muted-foreground">H2</p>
                             </div>
                             <div className="text-center p-2 bg-muted rounded">
-                              <p className="text-lg font-bold">{displayValue(analysis.technicalData?.h3Count)}</p>
+                              <p className="text-lg font-bold">{displayValue(analysis?.technicalData?.h3Count ?? null)}</p>
                               <p className="text-xs text-muted-foreground">H3</p>
                             </div>
                           </div>
-                          {analysis.contentQuality?.headingIssues && analysis.contentQuality.headingIssues.length > 0 && (
+                          {analysis?.contentQuality?.headingIssues && Array.isArray(analysis.contentQuality.headingIssues) && analysis.contentQuality.headingIssues.length > 0 && (
                             <div className="mt-3 space-y-1">
                               {analysis.contentQuality.headingIssues.map((issue, i) => (
                                 <p key={i} className="text-xs text-orange-600 flex items-center gap-1">
@@ -484,37 +491,41 @@ export default function SeoAudit() {
                           )}
                         </div>
 
-                        {/* Link Analysis */}
-                        {analysis.linkAnalysis && (
-                          <div className="p-4 rounded-lg border">
-                            <h4 className="font-medium mb-3 text-sm">Link Analyse</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                              <div className="p-2 bg-muted rounded text-center">
-                                <p className="text-lg font-bold text-blue-600">
-                                  {displayValue(analysis.linkAnalysis.contentLinks ?? analysis.linkAnalysis.internalLinks ?? analysis.linkAnalysis.internal)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Content Links</p>
-                              </div>
-                              <div className="p-2 bg-muted rounded text-center">
-                                <p className="text-lg font-bold">
-                                  {displayValue(analysis.linkAnalysis.footerLinks)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Footer Links</p>
-                              </div>
-                              <div className="p-2 bg-muted rounded text-center">
-                                <p className="text-lg font-bold">
-                                  {displayValue(analysis.linkAnalysis.abcIndexLinks)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">ABC-index</p>
-                              </div>
-                            </div>
-                            {analysis.linkAnalysis.linkingFeedback && (
-                              <p className="mt-3 text-xs text-muted-foreground">
-                                {analysis.linkAnalysis.linkingFeedback}
+                        {/* Link Analysis - Defensive rendering with total count */}
+                        <div className="p-4 rounded-lg border">
+                          <h4 className="font-medium mb-3 text-sm">Link Analyse</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div className="p-2 bg-muted rounded text-center">
+                              <p className="text-lg font-bold text-primary">
+                                {displayValue(analysis?.linkAnalysis?.internal ?? analysis?.linkAnalysis?.internalLinks ?? analysis?.technicalData?.internalLinks ?? null)}
                               </p>
-                            )}
+                              <p className="text-xs text-muted-foreground">Totaal Intern</p>
+                            </div>
+                            <div className="p-2 bg-muted rounded text-center">
+                              <p className="text-lg font-bold text-blue-600">
+                                {displayValue(analysis?.linkAnalysis?.contentLinks ?? null)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Content Links</p>
+                            </div>
+                            <div className="p-2 bg-muted rounded text-center">
+                              <p className="text-lg font-bold">
+                                {displayValue(analysis?.linkAnalysis?.footerLinks ?? null)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Footer Links</p>
+                            </div>
+                            <div className="p-2 bg-muted rounded text-center">
+                              <p className="text-lg font-bold">
+                                {displayValue(analysis?.linkAnalysis?.abcIndexLinks ?? null)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">ABC-index</p>
+                            </div>
                           </div>
-                        )}
+                          {analysis?.linkAnalysis?.linkingFeedback && (
+                            <p className="mt-3 text-xs text-muted-foreground">
+                              {analysis.linkAnalysis.linkingFeedback}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </TabsContent>
 
