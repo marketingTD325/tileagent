@@ -175,6 +175,19 @@ JSON formaat:
   }
 }`;
 
+    // Truncate page content to avoid token limits (max ~4000 words)
+    const truncatedContent = pageContent 
+      ? pageContent.split(/\s+/).slice(0, 4000).join(' ') + (pageContent.split(/\s+/).length > 4000 ? '\n\n[Content truncated for analysis...]' : '')
+      : 'Geen inhoud beschikbaar - analyseer alleen de URL structuur';
+
+    console.log('Content stats:', {
+      originalWords: pageContent?.split(/\s+/).length || 0,
+      truncatedWords: truncatedContent.split(/\s+/).length,
+      hasMetadata: !!metadata,
+      metaTitle: metadata?.title?.substring(0, 30) || 'none',
+      metaDesc: metadata?.description ? 'found' : 'missing'
+    });
+
     const userPrompt = `Analyseer deze Tegeldepot.nl pagina voor SEO optimalisatie:
 
 URL: ${url}
@@ -184,10 +197,12 @@ Gevonden Meta Data (via Scraper - NIET uit body text):
 - Description: ${metadata?.description || 'ONTBREEKT - geen meta description tag gevonden!'}
 
 Pagina inhoud (Body):
-${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}
+${truncatedContent}
 
 Wees kritisch en concreet. Geef specifieke verbeterpunten in de Tegeldepot tone of voice.
 BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de HTML meta tags. Als Description "ONTBREEKT" is, dan heeft de pagina GEEN meta description tag en moet dit als kritiek probleem worden gerapporteerd.`;
+
+    console.log('Sending request to AI gateway, prompt length:', userPrompt.length);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -206,6 +221,9 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('AI gateway error:', response.status, errorText);
+      
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }),
@@ -218,16 +236,57 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI gateway error: ${response.status} - ${errorText}`);
     }
 
     const aiResponse = await response.json();
+    console.log('AI response received:', {
+      hasChoices: !!aiResponse.choices,
+      choicesLength: aiResponse.choices?.length,
+      hasContent: !!aiResponse.choices?.[0]?.message?.content,
+      finishReason: aiResponse.choices?.[0]?.finish_reason
+    });
+
     const content = aiResponse.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error('No content in AI response');
+      console.error('Empty AI response:', JSON.stringify(aiResponse));
+      // Return a fallback analysis instead of throwing
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: {
+            score: 0,
+            title: metadata?.title || 'Onbekend',
+            metaDescription: metadata?.description || null,
+            metaDescriptionMissing: !metadata?.description,
+            issues: [{ type: 'error', category: 'Analyse', message: 'AI analyse kon niet worden voltooid - probeer het opnieuw', priority: 'high' }],
+            recommendations: [],
+            toneOfVoiceScore: { pragmatisch: 0, oplossingsgericht: 0, concreet: 0, autoritair: 0, feedback: 'Analyse niet beschikbaar' },
+            contentQuality: {
+              wordCount: contentMetrics?.wordCount || 0,
+              paragraphCount: contentMetrics?.paragraphCount || 0,
+              avgParagraphLength: contentMetrics?.avgParagraphLength || 0,
+              sentenceCount: contentMetrics?.sentenceCount || 0,
+              avgSentenceLength: contentMetrics?.avgSentenceLength || 0,
+              readabilityScore: null,
+              readabilityLevel: null,
+              headingStructureValid: null,
+              headingIssues: []
+            },
+            linkAnalysis: linkAnalysis || null,
+            technicalData: {
+              titleLength: metadata?.title?.length || 0,
+              metaDescriptionLength: metadata?.description?.length || 0,
+              h1Count: contentMetrics?.headingStructure?.h1 || 0,
+              h2Count: contentMetrics?.headingStructure?.h2 || 0,
+              h3Count: contentMetrics?.headingStructure?.h3 || 0,
+              wordCount: contentMetrics?.wordCount || 0
+            }
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Parse the JSON response
