@@ -40,6 +40,9 @@ serve(async (req) => {
     // Accept metadata object explicitly from scraper, plus new actionable data
     const { url, keyword, pageContent, metadata, linkAnalysis, contentMetrics, imageIssues, schemaTypes } = await req.json();
 
+    // Extract H1 text from contentMetrics for keyword analysis
+    const h1Text = contentMetrics?.h1Text || '';
+
     if (!url) {
       return new Response(
         JSON.stringify({ error: 'URL is required' }),
@@ -88,19 +91,47 @@ CONTENT METRICS (vooraf berekend):
 `;
     }
 
-    // Build keyword analysis context if available
+    // Build keyword analysis context if available - NOW WITH HARD-CODED CALCULATIONS
     let keywordContext = '';
+    let hardCodedKeywordAnalysis: { inTitle: boolean; inH1: boolean; inMeta: boolean; density: string; keywordCount: number } | null = null;
+    
     if (keyword) {
+      // HARD-CODE KEYWORD ANALYSIS: Calculate in backend, not AI
+      const keywordLower = keyword.toLowerCase();
+      const contentLower = (pageContent || '').toLowerCase();
+      const titleLower = (metadata?.title || '').toLowerCase();
+      const metaDescLower = (metadata?.description || '').toLowerCase();
+      const h1Lower = h1Text.toLowerCase();
+      
+      // Count keyword occurrences in content
+      const keywordRegex = new RegExp(keywordLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const keywordCount = (contentLower.match(keywordRegex) || []).length;
+      const wordCount = contentMetrics?.wordCount || 1; // Avoid division by zero
+      const density = ((keywordCount / wordCount) * 100).toFixed(2) + '%';
+      
+      // Check keyword presence in critical elements
+      const inTitle = titleLower.includes(keywordLower);
+      const inH1 = h1Lower.includes(keywordLower);
+      const inMeta = metaDescLower.includes(keywordLower);
+      
+      hardCodedKeywordAnalysis = { inTitle, inH1, inMeta, density, keywordCount };
+      
+      console.log('Hard-coded keyword analysis:', hardCodedKeywordAnalysis);
+      
       keywordContext = `
 >>> FOCUS KEYWORD: "${keyword}"
 
+HARD-CODED KEYWORD DATA (DO NOT OVERRIDE THESE VALUES):
+- In Title: ${inTitle ? 'JA' : 'NEE'}
+- In H1: ${inH1 ? 'JA' : 'NEE'} (H1 text: "${h1Text.substring(0, 50)}")
+- In Meta Description: ${inMeta ? 'JA' : 'NEE'}
+- Keyword Count: ${keywordCount}
+- Keyword Density: ${density}
+
 SPECIFIEKE KEYWORD INSTRUCTIES:
-1. Controleer of het focus keyword voorkomt in de Title tag
-2. Controleer of het focus keyword voorkomt in de H1
-3. Controleer of het focus keyword voorkomt in de Meta Description
-4. Bereken de Keyword Density in de body tekst (aantal keer keyword / totaal woorden * 100)
-5. PAS STRENGE STRAF TOE als het keyword NIET voorkomt in Title of H1!
-6. Geef concrete feedback over hoe het keyword beter gebruikt kan worden
+1. De keyword data hierboven is CORRECT en door ons berekend - gebruik deze exact in je JSON output!
+2. PAS STRENGE STRAF TOE als het keyword NIET voorkomt in Title of H1!
+3. Geef concrete feedback over hoe het keyword beter gebruikt kan worden
 `;
     }
 
@@ -482,13 +513,37 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
       });
     }
 
+    // 7. ENFORCE HARD-CODED KEYWORD ANALYSIS: Never trust AI for keyword checks
+    if (hardCodedKeywordAnalysis && keyword) {
+      analysis.keywordAnalysis = {
+        inTitle: hardCodedKeywordAnalysis.inTitle,
+        inH1: hardCodedKeywordAnalysis.inH1,
+        inMeta: hardCodedKeywordAnalysis.inMeta,
+        density: hardCodedKeywordAnalysis.density,
+        // Keep AI's qualitative feedback if it exists
+        feedback: analysis.keywordAnalysis?.feedback || `Keyword "${keyword}" gevonden ${hardCodedKeywordAnalysis.keywordCount} keer in de content.`
+      };
+      console.log('Hard-coded keyword analysis enforced:', analysis.keywordAnalysis);
+    }
+
+    // 8. Add content truncation info to response
+    const truncationInfo = {
+      contentTruncated: pageContent && pageContent.split(/\s+/).length > 4000,
+      originalWordCount: contentMetrics?.wordCount || 0,
+      analyzedWordCount: Math.min(contentMetrics?.wordCount || 0, 4000)
+    };
+    analysis.truncationInfo = truncationInfo;
+
     console.log('Hard data enforced - AI qualitative, Scraper quantitative:', {
       wordCount: analysis.contentQuality.wordCount,
       contentLinks: analysis.linkAnalysis?.contentLinks,
       h1Count: analysis.technicalData.h1Count,
+      h1Text: h1Text?.substring(0, 30) || 'none',
       imagesWithoutAlt: analysis.technicalData.imagesWithoutAlt,
       schemaTypesFound: analysis.schemaTypes?.length || 0,
       metaDescriptionEnforced: !!metadata?.description,
+      keywordAnalysisEnforced: !!hardCodedKeywordAnalysis,
+      contentTruncated: truncationInfo.contentTruncated,
       issuesAfterFilter: analysis.issues?.length || 0
     });
 
