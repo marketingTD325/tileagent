@@ -450,6 +450,24 @@ BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de
       schemaTypesFound: analysis.schemaTypes?.length || 0
     });
 
+    // HARDCODED CHECK: YouTube Branding in Title
+    if (metadata?.title && metadata.title.includes('- YouTube')) {
+      const youtubeIssue = {
+        type: 'error',
+        category: 'Branding',
+        message: 'Title tag bevat "- YouTube" (Copy-paste fout)',
+        priority: 'high',
+        explanation: "De title tag bevat '- YouTube'. Dit suggereert een copy-paste fout van een video-titel en is zeer schadelijk voor de autoriteit van de hoofdcategorie. Google ziet dit als duplicate of irrelevante content.",
+        location: "Controleer de 'Meta Title' in Magento (Catalog > Categories > [Selecteer Categorie] > Search Engine Optimization) of check de Tweakwise SEO-templates."
+      };
+      // Add to the START of the issues list for high visibility
+      if (!analysis.issues) analysis.issues = [];
+      analysis.issues.unshift(youtubeIssue);
+      // Penalty on score
+      analysis.score = Math.max(0, (analysis.score || 0) - 15);
+      console.log('YouTube branding detected in title, applied -15 score penalty');
+    }
+
     console.log('SEO analysis completed with score:', analysis.score);
 
     return new Response(

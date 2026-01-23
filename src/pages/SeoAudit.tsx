@@ -700,6 +700,47 @@ export default function SeoAudit() {
                           </p>
                         </div>
                       </div>
+
+                      {/* Schema.org Types Badges */}
+                      <div className="mt-6 p-4 rounded-lg border">
+                        <h4 className="font-medium mb-3 text-sm flex items-center gap-2">
+                          <Code className="h-4 w-4" /> Gevonden Schema.org Types
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {analysis.schemaTypes && analysis.schemaTypes.length > 0 ? (
+                            analysis.schemaTypes.map((type, i) => (
+                              <Badge key={i} variant={getSchemaColor(type) as 'default' | 'secondary'}>
+                                {type}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Geen structured data gevonden.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Image Issues List */}
+                      {analysis.imageIssues && analysis.imageIssues.length > 0 && (
+                        <div className="mt-4 p-4 rounded-lg border bg-destructive/5 border-destructive/20">
+                          <h4 className="font-medium mb-3 text-sm flex items-center gap-2 text-destructive">
+                            <Image className="h-4 w-4" /> 
+                            Afbeeldingen zonder Alt-tekst ({analysis.imageIssues.length})
+                          </h4>
+                          <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
+                            {analysis.imageIssues.slice(0, 10).map((img, i) => (
+                              <div key={i} className="text-xs font-mono bg-background p-2 rounded border truncate" title={img.src}>
+                                {img.src.split('/').pop()} 
+                                <span className="block text-[10px] text-muted-foreground opacity-70 truncate">{img.src}</span>
+                              </div>
+                            ))}
+                            {analysis.imageIssues.length > 10 && (
+                              <p className="text-xs text-muted-foreground italic">
+                                ... en {analysis.imageIssues.length - 10} meer
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </TabsContent>
                   </Tabs>
                 </CardContent>
