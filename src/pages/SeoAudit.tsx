@@ -150,17 +150,19 @@ export default function SeoAudit() {
         throw new Error(scrapeResult.error || 'Kon pagina niet ophalen');
       }
 
-      // Then analyze with AI - pass linkAnalysis and contentMetrics
+      // Then analyze with AI - pass metadata, linkAnalysis and contentMetrics
       toast({ title: 'Stap 2/2', description: 'SEO analyseren...' });
       const pageContent = scrapeResult.data?.markdown || '';
+      const metadata = scrapeResult.data?.metadata || null;
       const linkAnalysis = scrapeResult.data?.linkAnalysis || null;
       const contentMetrics = scrapeResult.data?.contentMetrics || null;
       
-      // Call seo-analyze with extra data
+      // Call seo-analyze with metadata explicitly passed
       const { data: analyzeResult, error: analyzeError } = await supabase.functions.invoke('seo-analyze', {
         body: { 
           url, 
           pageContent,
+          metadata, // Pass title and description from scraper
           linkAnalysis,
           contentMetrics
         }
