@@ -1,9 +1,35 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // SEO Analyze API
-export async function analyzePageSeo(url: string, pageContent?: string) {
+export async function analyzePageSeo(
+  url: string, 
+  pageContent?: string,
+  linkAnalysis?: {
+    total: number;
+    internal: number;
+    external: number;
+    footerLinks: number;
+    abcIndexLinks: number;
+    contentLinks: number;
+  },
+  contentMetrics?: {
+    wordCount: number;
+    paragraphCount: number;
+    avgParagraphLength: number;
+    sentenceCount: number;
+    avgSentenceLength: number;
+    headingStructure: {
+      h1: number;
+      h2: number;
+      h3: number;
+      h4: number;
+      h5: number;
+      h6: number;
+    };
+  }
+) {
   const { data, error } = await supabase.functions.invoke('seo-analyze', {
-    body: { url, pageContent }
+    body: { url, pageContent, linkAnalysis, contentMetrics }
   });
   
   if (error) throw error;
