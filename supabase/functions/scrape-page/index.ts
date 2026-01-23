@@ -1,39 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// STRICT meta description extraction - ONLY from meta tags, NEVER from body text
-function extractMetaDescription(html: string): string | null {
-  // STRICT RULE: Only extract from meta[name="description"] or meta[property="og:description"]
+// STRICT meta extraction using cheerio - ONLY from meta tags, NEVER from body text
+function extractMetadata(html: string): { title: string; description: string | null } {
+  const $ = cheerio.load(html);
+  
+  // STRICT RULE: Only extract title from <title> or og:title
+  const title = $('title').text().trim() || 
+                $('meta[property="og:title"]').attr('content')?.trim() || '';
+  
+  // STRICT RULE: Only extract from meta[name="description"] or og:description
   // NEVER fall back to body text, paragraphs, or any other content
+  const description = $('meta[name="description"]').attr('content')?.trim() ||
+                      $('meta[property="og:description"]').attr('content')?.trim() ||
+                      null; // Return null if not found - NO FALLBACK
   
-  const patterns = [
-    // Standard: <meta name="description" content="...">
-    /<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i,
-    // Reversed: <meta content="..." name="description">
-    /<meta[^>]*content=["']([^"']*?)["'][^>]*name=["']description["']/i,
-    // OG description fallback
-    /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["']/i,
-    /<meta[^>]*content=["']([^"']*?)["'][^>]*property=["']og:description["']/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match && match[1] && match[1].trim().length > 0) {
-      const desc = match[1].trim();
-      // Only return if it looks like a real meta description (>= 20 chars, no UI text)
-      if (desc.length >= 20) {
-        return desc;
-      }
-    }
-  }
+  console.log('Metadata extracted:', { 
+    title: title.substring(0, 50), 
+    descriptionFound: !!description,
+    descriptionLength: description?.length || 0 
+  });
   
-  // CRITICAL: Return null if no meta description found
-  // DO NOT return body text, first paragraph, or any other fallback
-  return null;
+  return { title, description };
 }
 
 // Extract and categorize ALL links from entire HTML (including footer/ABC)
@@ -266,12 +259,8 @@ serve(async (req) => {
     const html = scrapedData.html || '';
     const markdown = scrapedData.markdown || '';
     
-    // Extract title from HTML
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    const title = titleMatch ? titleMatch[1].trim() : (scrapedData.metadata?.title || '');
-    
-    // Extract meta description - NO FALLBACK TO BODY TEXT
-    const metaDescription = extractMetaDescription(html);
+    // Extract metadata using cheerio - STRICT, no body text fallback
+    const metadata = extractMetadata(html);
     
     // Analyze link structure
     const linkAnalysis = analyzeLinkStructure(html, formattedUrl);
@@ -285,8 +274,8 @@ serve(async (req) => {
       html: html,
       links: scrapedData.links || [],
       metadata: {
-        title: title,
-        description: metaDescription, // Can be null if not found
+        title: metadata.title,
+        description: metadata.description, // Can be null if not found - NO FALLBACK
         ogImage: scrapedData.metadata?.ogImage || null,
         ogTitle: scrapedData.metadata?.ogTitle || null,
       },
@@ -295,7 +284,8 @@ serve(async (req) => {
     };
 
     console.log('Scrape successful for:', formattedUrl, {
-      metaDescFound: !!metaDescription,
+      title: metadata.title.substring(0, 30),
+      metaDescFound: !!metadata.description,
       linkCount: linkAnalysis.total,
       wordCount: contentMetrics.wordCount
     });

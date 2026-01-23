@@ -37,7 +37,8 @@ serve(async (req) => {
   }
 
   try {
-    const { url, pageContent, linkAnalysis, contentMetrics } = await req.json();
+    // Accept metadata object explicitly from scraper
+    const { url, pageContent, metadata, linkAnalysis, contentMetrics } = await req.json();
 
     if (!url) {
       return new Response(
@@ -178,11 +179,15 @@ JSON formaat:
 
 URL: ${url}
 
-Pagina inhoud:
+Gevonden Meta Data (via Scraper - NIET uit body text):
+- Title: ${metadata?.title || 'Niet gevonden'}
+- Description: ${metadata?.description || 'ONTBREEKT - geen meta description tag gevonden!'}
+
+Pagina inhoud (Body):
 ${pageContent || 'Geen inhoud beschikbaar - analyseer alleen de URL structuur'}
 
 Wees kritisch en concreet. Geef specifieke verbeterpunten in de Tegeldepot tone of voice.
-Let vooral op of de meta description daadwerkelijk aanwezig is (niet verward met body tekst zoals "winkelwagen" berichten).`;
+BELANGRIJK: De hierboven vermelde Title en Description komen rechtstreeks uit de HTML meta tags. Als Description "ONTBREEKT" is, dan heeft de pagina GEEN meta description tag en moet dit als kritiek probleem worden gerapporteerd.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
