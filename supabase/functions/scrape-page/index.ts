@@ -38,8 +38,8 @@ function extractMetadataRobust(html: string, firecrawlMetadata?: any): { title: 
   return { title, description };
 }
 
-// Extract and categorize ALL links from entire HTML (including footer/ABC)
-function analyzeLinkStructure(html: string, baseUrl: string): {
+// Extract and categorize ALL links using Cheerio for accurate HTML parsing
+function analyzeLinkStructure($: cheerio.CheerioAPI, baseUrl: string): {
   total: number;
   internal: number;
   external: number;
@@ -50,75 +50,86 @@ function analyzeLinkStructure(html: string, baseUrl: string): {
   try {
     const hostname = new URL(baseUrl).hostname;
     
-    // Get ALL links from entire DOM - global selector, not restricted to main/article
-    const linkMatches = html.match(/<a[^>]*href=["']([^"'#][^"']*)["'][^>]*>/gi) || [];
-    const allLinks = linkMatches.map(link => {
-      const hrefMatch = link.match(/href=["']([^"'#][^"']*)["']/i);
-      return hrefMatch ? hrefMatch[1] : '';
-    }).filter(href => href.length > 0 && !href.startsWith('javascript:') && !href.startsWith('mailto:') && !href.startsWith('tel:'));
-
-    // Count internal vs external for ALL links
+    // Helper to check if link is internal
+    const isInternalLink = (href: string): boolean => {
+      if (!href || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#')) {
+        return false;
+      }
+      try {
+        if (href.startsWith('/') || !href.startsWith('http')) {
+          return true; // Relative links are internal
+        }
+        const linkHost = new URL(href).hostname;
+        return linkHost === hostname || linkHost.endsWith('.' + hostname) || hostname.endsWith('.' + linkHost);
+      } catch {
+        return true; // Malformed URLs are likely internal
+      }
+    };
+    
+    // Get ALL links from the page using Cheerio
+    const allLinks = $('a[href]').toArray();
     let internal = 0;
     let external = 0;
     
-    for (const href of allLinks) {
-      try {
-        if (href.startsWith('/')) {
-          internal++;
-        } else if (href.startsWith('http')) {
-          const linkHost = new URL(href).hostname;
-          if (linkHost === hostname || linkHost.endsWith('.' + hostname) || hostname.endsWith('.' + linkHost)) {
-            internal++;
-          } else {
-            external++;
-          }
-        } else {
-          internal++; // relative links without leading slash
-        }
-      } catch {
-        internal++; // malformed URLs are likely internal
-      }
-    }
-
-    // Detect footer links - search for common footer containers
-    const footerPatterns = [
-      /<footer[^>]*>([\s\S]*?)<\/footer>/gi,
-      /<div[^>]*(class|id)=["'][^"']*(footer|foot-nav|site-footer)[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi,
-    ];
+    // 1. Count footer links using comprehensive selectors
+    const footerSelectors = [
+      'footer a[href]',
+      '.footer a[href]',
+      '#footer a[href]',
+      '.site-footer a[href]',
+      '#site-footer a[href]',
+      '.foot-nav a[href]',
+      '[class*="footer"] a[href]',
+      '[id*="footer"] a[href]'
+    ].join(', ');
     
-    let footerLinks = 0;
-    for (const pattern of footerPatterns) {
-      const matches = html.matchAll(pattern);
-      for (const match of matches) {
-        const footerHtml = match[0];
-        footerLinks += (footerHtml.match(/<a\s[^>]*href/gi) || []).length;
-      }
-    }
-
-    // Detect ABC-index / alphabet / sitemap / brands-list links (common in Magento/Tweakwise)
-    const abcPatterns = [
-      /<[^>]*(class|id)=["'][^"']*(alphabet|abc-index|a-z-index|sitemap-alpha|letter-nav|brands-list|brand-list|merken-list)[^"']*["'][^>]*>([\s\S]*?)<\/[a-z]+>/gi,
-      /<nav[^>]*(class|id)=["'][^"']*(alphabet|a-z|brand)[^"']*["'][^>]*>([\s\S]*?)<\/nav>/gi,
-      /<ul[^>]*(class|id)=["'][^"']*(alphabet|sitemap|brand-index)[^"']*["'][^>]*>([\s\S]*?)<\/ul>/gi,
-    ];
+    const footerLinks = $(footerSelectors).length;
     
-    let abcIndexLinks = 0;
-    for (const pattern of abcPatterns) {
-      const matches = html.matchAll(pattern);
-      for (const match of matches) {
-        const abcHtml = match[0];
-        abcIndexLinks += (abcHtml.match(/<a\s[^>]*href/gi) || []).length;
+    // 2. Count ABC-index / alphabet / brands-list links
+    const abcSelectors = [
+      '.alphabet a[href]',
+      '#alphabet a[href]',
+      '.abc-index a[href]',
+      '.a-z-index a[href]',
+      '.sitemap-alpha a[href]',
+      '.letter-nav a[href]',
+      '.brands-list a[href]',
+      '.brand-list a[href]',
+      '.merken-list a[href]',
+      '.brand-index a[href]',
+      '[class*="alphabet"] a[href]',
+      '[class*="brands"] a[href]',
+      'nav.alphabet a[href]',
+      'nav.brand a[href]',
+      'ul.alphabet a[href]',
+      'ul.sitemap a[href]',
+      'ul.brand-index a[href]'
+    ].join(', ');
+    
+    const abcIndexLinks = $(abcSelectors).length;
+    
+    // 3. Count all links and categorize internal/external
+    for (const el of allLinks) {
+      const href = $(el).attr('href');
+      if (!href || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:') || href === '#') {
+        continue;
+      }
+      
+      if (isInternalLink(href)) {
+        internal++;
+      } else if (href.startsWith('http')) {
+        external++;
       }
     }
-
-    // Content links = total internal links minus footer and ABC (for SEO scoring)
-    // But report the full internal count as well
+    
+    // Content links = internal links minus footer and ABC (for SEO scoring)
     const contentLinks = Math.max(0, internal - footerLinks - abcIndexLinks);
+    const total = internal + external;
 
-    console.log(`Link analysis: total=${allLinks.length}, internal=${internal}, external=${external}, footer=${footerLinks}, abc=${abcIndexLinks}, content=${contentLinks}`);
+    console.log(`Link analysis (Cheerio): total=${total}, internal=${internal}, external=${external}, footer=${footerLinks}, abc=${abcIndexLinks}, content=${contentLinks}`);
 
     return {
-      total: allLinks.length,
+      total,
       internal,
       external,
       footerLinks,
@@ -138,8 +149,8 @@ function analyzeLinkStructure(html: string, baseUrl: string): {
   }
 }
 
-// Extract content quality metrics from HTML
-function extractContentMetrics(html: string, markdown: string): {
+// Extract content quality metrics using Cheerio for headings
+function extractContentMetrics($: cheerio.CheerioAPI, markdown: string): {
   wordCount: number;
   paragraphCount: number;
   avgParagraphLength: number;
@@ -154,13 +165,13 @@ function extractContentMetrics(html: string, markdown: string): {
   sentenceCount: number;
   avgSentenceLength: number;
 } {
-  // Count headings from HTML for accuracy
-  const h1Count = (html.match(/<h1[^>]*>/gi) || []).length;
-  const h2Count = (html.match(/<h2[^>]*>/gi) || []).length;
-  const h3Count = (html.match(/<h3[^>]*>/gi) || []).length;
-  const h4Count = (html.match(/<h4[^>]*>/gi) || []).length;
-  const h5Count = (html.match(/<h5[^>]*>/gi) || []).length;
-  const h6Count = (html.match(/<h6[^>]*>/gi) || []).length;
+  // Count headings using Cheerio for accuracy
+  const h1Count = $('h1').length;
+  const h2Count = $('h2').length;
+  const h3Count = $('h3').length;
+  const h4Count = $('h4').length;
+  const h5Count = $('h5').length;
+  const h6Count = $('h6').length;
 
   // Use markdown for text analysis (cleaner)
   const cleanText = markdown
@@ -268,14 +279,17 @@ serve(async (req) => {
     const html = scrapedData.html || '';
     const markdown = scrapedData.markdown || '';
     
+    // Load Cheerio once and reuse for all parsing
+    const $ = cheerio.load(html);
+    
     // Extract metadata using robust cheerio-based extraction with priority chain
     const metadata = extractMetadataRobust(html, scrapedData.metadata);
     
-    // Analyze link structure
-    const linkAnalysis = analyzeLinkStructure(html, formattedUrl);
+    // Analyze link structure using Cheerio (not regex)
+    const linkAnalysis = analyzeLinkStructure($, formattedUrl);
     
-    // Extract content metrics
-    const contentMetrics = extractContentMetrics(html, markdown);
+    // Extract content metrics using Cheerio
+    const contentMetrics = extractContentMetrics($, markdown);
 
     const result = {
       url: formattedUrl,
