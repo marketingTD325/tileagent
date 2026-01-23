@@ -433,38 +433,65 @@ export type Database = {
       }
       seo_audits: {
         Row: {
+          content_quality: Json | null
           created_at: string
+          focus_keyword: string | null
           id: string
+          image_issues: Json | null
           issues: Json | null
+          keyword_analysis: Json | null
+          link_analysis: Json | null
           meta_description: string | null
+          metadata_sources: Json | null
           recommendations: Json | null
+          schema_types: string[] | null
           score: number | null
           technical_data: Json | null
           title: string | null
+          tone_of_voice_score: Json | null
+          truncation_info: Json | null
           url: string
           user_id: string
         }
         Insert: {
+          content_quality?: Json | null
           created_at?: string
+          focus_keyword?: string | null
           id?: string
+          image_issues?: Json | null
           issues?: Json | null
+          keyword_analysis?: Json | null
+          link_analysis?: Json | null
           meta_description?: string | null
+          metadata_sources?: Json | null
           recommendations?: Json | null
+          schema_types?: string[] | null
           score?: number | null
           technical_data?: Json | null
           title?: string | null
+          tone_of_voice_score?: Json | null
+          truncation_info?: Json | null
           url: string
           user_id: string
         }
         Update: {
+          content_quality?: Json | null
           created_at?: string
+          focus_keyword?: string | null
           id?: string
+          image_issues?: Json | null
           issues?: Json | null
+          keyword_analysis?: Json | null
+          link_analysis?: Json | null
           meta_description?: string | null
+          metadata_sources?: Json | null
           recommendations?: Json | null
+          schema_types?: string[] | null
           score?: number | null
           technical_data?: Json | null
           title?: string | null
+          tone_of_voice_score?: Json | null
+          truncation_info?: Json | null
           url?: string
           user_id?: string
         }
