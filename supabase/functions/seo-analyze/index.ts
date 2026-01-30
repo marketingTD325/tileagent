@@ -303,9 +303,9 @@ JSON formaat:
   }
 }`;
 
-    // Truncate page content to avoid token limits (max ~4000 words)
+    // Truncate page content to avoid token limits (max ~15000 words)
     const truncatedContent = pageContent 
-      ? pageContent.split(/\s+/).slice(0, 4000).join(' ') + (pageContent.split(/\s+/).length > 4000 ? '\n\n[Content truncated for analysis...]' : '')
+      ? pageContent.split(/\s+/).slice(0, 15000).join(' ') + (pageContent.split(/\s+/).length > 15000 ? '\n\n[Content truncated for analysis...]' : '')
       : 'Geen inhoud beschikbaar - analyseer alleen de URL structuur';
 
     console.log('Content stats:', {
