@@ -37,11 +37,14 @@ serve(async (req) => {
   }
 
   try {
-    // Accept metadata object explicitly from scraper, plus new actionable data
-    const { url, keyword, pageContent, metadata, linkAnalysis, contentMetrics, imageIssues, schemaTypes } = await req.json();
+    // Accept metadata object explicitly from scraper, plus new actionable data including page type
+    const { url, keyword, pageContent, metadata, linkAnalysis, contentMetrics, imageIssues, schemaTypes, pageType, pageTypeRequirements } = await req.json();
 
     // Extract H1 text from contentMetrics for keyword analysis
     const h1Text = contentMetrics?.h1Text || '';
+    
+    // Log page type for debugging
+    console.log('Page type detected:', pageType, 'with requirements:', pageTypeRequirements);
 
     if (!url) {
       return new Response(
@@ -164,6 +167,32 @@ Dit is een gemiste kans - adviseer om Product, FAQPage of BreadcrumbList schema 
 `;
     }
 
+    // Build page type context for type-specific scoring
+    let pageTypeContext = '';
+    if (pageType && pageTypeRequirements) {
+      const pageTypeLabels: Record<string, string> = {
+        'homepage': 'Homepage',
+        'category': 'Categoriepagina',
+        'filter': 'Filterpagina', 
+        'product': 'Productpagina',
+        'other': 'Overige pagina'
+      };
+      
+      pageTypeContext = `
+>>> PAGINATYPE: ${pageTypeLabels[pageType] || pageType}
+
+PAGINATYPE-SPECIFIEKE EISEN:
+- Minimaal woorden: ${pageTypeRequirements.minWordCount}
+- Maximaal woorden: ${pageTypeRequirements.maxWordCount}
+- Verplichte schema: ${pageTypeRequirements.requiredSchema?.join(', ') || 'geen'}
+- Aanbevolen schema: ${pageTypeRequirements.recommendedSchema?.join(', ') || 'geen'}
+- Minimaal content links: ${pageTypeRequirements.minInternalLinks}
+- FAQ vereist: ${pageTypeRequirements.requiresFaq ? 'Ja' : 'Nee'}
+
+PAS DE SCORE AAN OP BASIS VAN DIT PAGINATYPE! Een productpagina hoeft geen 700 woorden te hebben, maar een categoriepagina wel.
+`;
+    }
+
     const systemPrompt = `Je bent een expert SEO-analist voor Tegeldepot.nl.
 
 ${TEGELDEPOT_CONTEXT}
@@ -172,6 +201,7 @@ Analyseer de gegeven pagina-inhoud en geef een gedetailleerde SEO-audit.
 
 BELANGRIJK: Antwoord ALLEEN met valid JSON, geen andere tekst.
 
+${pageTypeContext}
 ${linkContext}
 ${metricsContext}
 ${keywordContext}
@@ -181,6 +211,7 @@ ${schemaContext}
 SPECIALE CHECKS:
 1. Controleer of de Title Tag '- YouTube' bevat. Zo ja, maak een HIGH PRIORITY error met titel "YouTube branding in title". Leg uit dat dit onprofessioneel oogt en autoriteit aantast.
 2. Voor ELKE issue, geef een gedetailleerde 'explanation' (waarom is dit slecht voor SEO?) en 'location' (waar precies dit te fixen, bijv. "Meta Settings in Magento", "Header Template", "Alt tag in CMS").
+3. GEBRUIK HET PAGINATYPE voor je beoordeling! Een productpagina heeft andere eisen dan een categoriepagina.
 
 BEOORDEEL OP:
 1. Title tag (lengte 50-60 karakters, zoekwoord vooraan)
@@ -188,16 +219,16 @@ BEOORDEEL OP:
    - LET OP: Als de meta description null of leeg is, geef dit expliciet aan als probleem!
    - Gebruik NOOIT body tekst als vervanging voor een ontbrekende meta description
 3. Heading structuur (H1-H6 hiërarchie)
-4. Content kwaliteit:
+4. Content kwaliteit (afhankelijk van paginatype):
    - Volgt het de Tegeldepot tone of voice?
    - Is het oplossingsgericht met keuzehulp?
    - Geen vage algemeenheden?
    - Concrete praktische info?
-5. Interne linking (voldoende voor de tekstlengte? Gebruik de CONTENT links, niet footer/abc)
-6. E-E-A-T elementen (expertise, FAQ, etc.)
+5. Interne linking (voldoende voor de tekstlengte en paginatype? Gebruik de CONTENT links, niet footer/abc)
+6. E-E-A-T elementen (expertise, FAQ - vooral voor categoriepagina's)
 7. Afbeeldingen (alt-tags - gebruik de imageIssues lijst!)
 8. URL structuur
-9. Schema markup mogelijkheden (gebruik de schemaTypes lijst!)
+9. Schema markup (afhankelijk van paginatype - zie de verplichte/aanbevolen schema's)
 
 SCOOR STRENG: Tegeldepot wil pragmatische, no-nonsense content die de klant echt helpt.
 

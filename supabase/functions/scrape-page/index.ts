@@ -6,6 +6,143 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Page type detection for tegeldepot.nl URL patterns
+type PageType = 'homepage' | 'category' | 'filter' | 'product' | 'other';
+
+function detectPageType(url: string): PageType {
+  try {
+    const urlObj = new URL(url);
+    const path = urlObj.pathname;
+    
+    // 1. Homepage
+    if (path === '/' || path === '') {
+      return 'homepage';
+    }
+    
+    // 2. Filter Pages - contain filter patterns like /filter/, /radiator-breedte-reeks/, /kleur/, /merk/
+    const filterPatterns = [
+      /\/filter\//i,
+      /\/radiator-breedte-reeks\//i,
+      /\/radiator-hoogte-reeks\//i,
+      /\/kleur\//i,
+      /\/merk\//i,
+      /\/afmeting\//i,
+      /\/materiaal\//i,
+      /---to--/i,  // Range filter pattern like "40---to--50-cm"
+    ];
+    
+    if (filterPatterns.some(pattern => pattern.test(path))) {
+      return 'filter';
+    }
+    
+    // 3. Product Pages - long slugs with dimensions/specs patterns
+    const productPatterns = [
+      /\d+x\d+/i,           // Dimensions like 124x71
+      /\d+x\d+x\d+/i,       // 3D dimensions like 124x71x42
+      /-cm$/i,              // Ends with -cm
+      /-mm$/i,              // Ends with -mm
+      /-wit$/i,             // Color suffix
+      /-zwart$/i,
+      /-grijs$/i,
+      /-liter$/i,           // Volume
+      /-watt$/i,            // Power
+    ];
+    
+    const segments = path.split('/').filter(s => s.length > 0);
+    const lastSegment = segments[segments.length - 1] || '';
+    
+    // Product pages typically have long slugs with specs
+    if (lastSegment.length > 30 && productPatterns.some(p => p.test(lastSegment))) {
+      return 'product';
+    }
+    
+    // Also check for specific product indicators in the last segment
+    if (lastSegment.includes('-') && (
+      /\d{2,}/.test(lastSegment) || // Contains 2+ digit numbers
+      productPatterns.some(p => p.test(lastSegment))
+    )) {
+      // Additional check: products tend to have many hyphens (more than 4)
+      const hyphenCount = (lastSegment.match(/-/g) || []).length;
+      if (hyphenCount > 4) {
+        return 'product';
+      }
+    }
+    
+    // 4. Category Pages - 1-4 segments, typically category hierarchy
+    // Examples: /bad, /bad/whirlpool-bad, /bad/whirlpool-bad/bubbelbad
+    if (segments.length >= 1 && segments.length <= 4) {
+      // Category slugs are shorter and don't have product specs
+      const hasNoProductSpecs = !productPatterns.some(p => p.test(path));
+      if (hasNoProductSpecs) {
+        return 'category';
+      }
+    }
+    
+    return 'other';
+  } catch (error) {
+    console.error('Error detecting page type:', error);
+    return 'other';
+  }
+}
+
+// Get page type-specific SEO requirements
+function getPageTypeRequirements(pageType: PageType): {
+  minWordCount: number;
+  maxWordCount: number;
+  requiredSchema: string[];
+  recommendedSchema: string[];
+  minInternalLinks: number;
+  requiresFaq: boolean;
+} {
+  switch (pageType) {
+    case 'homepage':
+      return {
+        minWordCount: 300,
+        maxWordCount: 800,
+        requiredSchema: ['Organization', 'WebSite'],
+        recommendedSchema: ['BreadcrumbList'],
+        minInternalLinks: 10,
+        requiresFaq: false,
+      };
+    case 'category':
+      return {
+        minWordCount: 700,
+        maxWordCount: 1000,
+        requiredSchema: ['BreadcrumbList'],
+        recommendedSchema: ['FAQPage', 'ItemList'],
+        minInternalLinks: 5,
+        requiresFaq: true,
+      };
+    case 'filter':
+      return {
+        minWordCount: 200,
+        maxWordCount: 400,
+        requiredSchema: ['BreadcrumbList'],
+        recommendedSchema: ['ItemList'],
+        minInternalLinks: 3,
+        requiresFaq: false,
+      };
+    case 'product':
+      return {
+        minWordCount: 150,
+        maxWordCount: 300,
+        requiredSchema: ['Product', 'Offer'],
+        recommendedSchema: ['BreadcrumbList', 'Review'],
+        minInternalLinks: 2,
+        requiresFaq: false,
+      };
+    default:
+      return {
+        minWordCount: 300,
+        maxWordCount: 800,
+        requiredSchema: [],
+        recommendedSchema: ['BreadcrumbList'],
+        minInternalLinks: 3,
+        requiresFaq: false,
+      };
+  }
+}
+
 // Robust metadata extraction using cheerio with priority chains
 // Priority: HTML tags -> OG tags -> Firecrawl metadata object
 function extractMetadataRobust(html: string, firecrawlMetadata?: any): { 
@@ -446,6 +583,10 @@ serve(async (req) => {
     // Extract JSON-LD schema types
     const schemaTypes = extractSchemaTypes($);
 
+    // Detect page type for type-specific analysis
+    const pageType = detectPageType(formattedUrl);
+    const pageTypeRequirements = getPageTypeRequirements(pageType);
+
     const result = {
       url: formattedUrl,
       markdown: markdown,
@@ -462,10 +603,14 @@ serve(async (req) => {
       linkAnalysis,
       contentMetrics,
       imageIssues,
-      schemaTypes
+      schemaTypes,
+      // NEW: Page type detection for type-specific scoring
+      pageType,
+      pageTypeRequirements
     };
 
     console.log('Scrape successful for:', formattedUrl, {
+      pageType,
       title: metadata.title.substring(0, 30),
       titleSource: metadata.titleSource,
       metaDescFound: !!metadata.description,
@@ -474,7 +619,8 @@ serve(async (req) => {
       linkCount: linkAnalysis.total,
       wordCount: contentMetrics.wordCount,
       imageIssuesCount: imageIssues.length,
-      schemaTypesCount: schemaTypes.length
+      schemaTypesCount: schemaTypes.length,
+      requirements: pageTypeRequirements
     });
     
     return new Response(

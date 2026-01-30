@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { scrapePage } from '@/lib/api';
+import { computeQuickScan, getPageTypeLabel, getPageTypeColor, type QuickScanResult, type PageType } from '@/lib/quick-scan';
 import { 
   Loader2, Search, AlertTriangle, CheckCircle2, Info, 
   ExternalLink, FileText, Image, Link2, Clock, Zap,
-  BookOpen, Type, AlignLeft, Code, MapPin
+  BookOpen, Type, AlignLeft, Code, MapPin, Gauge
 } from 'lucide-react';
 
 interface ContentQuality {
@@ -137,6 +138,8 @@ interface SeoAnalysis {
     hasFaq?: boolean;
     hasStructuredData?: boolean;
   };
+  pageType?: PageType;
+  isQuickScan?: boolean;
 }
 
 // Helper function for safe value display - DEFENSIVE with optional chaining
@@ -171,6 +174,7 @@ export default function SeoAudit() {
   const [url, setUrl] = useState('https://www.tegeldepot.nl/');
   const [keyword, setKeyword] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isQuickScanning, setIsQuickScanning] = useState(false);
   const [analysis, setAnalysis] = useState<SeoAnalysis | null>(null);
   const [recentAudits, setRecentAudits] = useState<any[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<SeoIssue | null>(null);
@@ -224,7 +228,10 @@ export default function SeoAudit() {
       const imageIssues = scrapeResult.data?.imageIssues || [];
       const schemaTypes = scrapeResult.data?.schemaTypes || [];
       
-      // Call seo-analyze with metadata explicitly passed
+      // Call seo-analyze with metadata explicitly passed, including page type
+      const pageType = scrapeResult.data?.pageType || 'other';
+      const pageTypeRequirements = scrapeResult.data?.pageTypeRequirements || null;
+      
       const { data: analyzeResult, error: analyzeError } = await supabase.functions.invoke('seo-analyze', {
         body: { 
           url, 
@@ -233,8 +240,10 @@ export default function SeoAudit() {
           metadata, // Pass title and description from scraper
           linkAnalysis,
           contentMetrics,
-          imageIssues, // NEW: Pass image issues
-          schemaTypes  // NEW: Pass schema types
+          imageIssues, // Pass image issues
+          schemaTypes, // Pass schema types
+          pageType, // NEW: Pass page type
+          pageTypeRequirements // NEW: Pass requirements
         }
       });
 
@@ -290,6 +299,106 @@ export default function SeoAudit() {
       });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  // Quick Scan - No AI, just technical checks
+  const handleQuickScan = async () => {
+    if (!url.trim()) {
+      toast({ title: 'Fout', description: 'Vul een URL in', variant: 'destructive' });
+      return;
+    }
+
+    setIsQuickScanning(true);
+    setAnalysis(null);
+
+    try {
+      toast({ title: 'Quick Scan', description: 'Pagina ophalen...' });
+      const scrapeResult = await scrapePage(url);
+      
+      if (!scrapeResult.success) {
+        throw new Error(scrapeResult.error || 'Kon pagina niet ophalen');
+      }
+
+      // Compute Quick Scan locally (no AI call)
+      const quickScanResult = computeQuickScan(scrapeResult.data || {});
+      
+      // Convert to SeoAnalysis format
+      const quickAnalysis: SeoAnalysis = {
+        score: quickScanResult.score,
+        title: scrapeResult.data?.metadata?.title || '',
+        metaDescription: scrapeResult.data?.metadata?.description || null,
+        metaDescriptionMissing: quickScanResult.metrics.metaDescriptionMissing,
+        issues: quickScanResult.issues.map(issue => ({
+          type: issue.type,
+          category: issue.category,
+          message: issue.message,
+          priority: issue.priority,
+        })),
+        recommendations: [], // No AI recommendations in quick scan
+        technicalData: {
+          titleLength: quickScanResult.metrics.titleLength,
+          metaDescriptionLength: quickScanResult.metrics.metaDescriptionLength,
+          h1Count: quickScanResult.metrics.h1Count,
+          wordCount: quickScanResult.metrics.wordCount,
+          imagesWithoutAlt: quickScanResult.metrics.imagesWithoutAlt,
+          internalLinks: quickScanResult.metrics.internalLinksCount,
+          hasStructuredData: quickScanResult.metrics.schemaTypesCount > 0,
+        },
+        contentQuality: {
+          wordCount: quickScanResult.metrics.wordCount,
+          paragraphCount: scrapeResult.data?.contentMetrics?.paragraphCount || 0,
+          avgParagraphLength: scrapeResult.data?.contentMetrics?.avgParagraphLength || 0,
+          headingStructure: scrapeResult.data?.contentMetrics?.headingStructure,
+        },
+        linkAnalysis: scrapeResult.data?.linkAnalysis,
+        imageIssues: scrapeResult.data?.imageIssues,
+        schemaTypes: scrapeResult.data?.schemaTypes,
+        pageType: quickScanResult.pageType,
+        isQuickScan: true,
+      };
+
+      setAnalysis(quickAnalysis);
+
+      // Save quick scan to database (cast to any for new columns not yet in types)
+      await supabase.from('seo_audits').insert({
+        user_id: user!.id,
+        url,
+        title: quickAnalysis.title,
+        meta_description: quickAnalysis.metaDescription,
+        score: quickAnalysis.score,
+        issues: quickAnalysis.issues as any,
+        recommendations: [] as any,
+        technical_data: quickAnalysis.technicalData as any,
+        content_quality: quickAnalysis.contentQuality as any,
+        link_analysis: quickAnalysis.linkAnalysis as any,
+        image_issues: quickAnalysis.imageIssues as any,
+        schema_types: quickAnalysis.schemaTypes,
+        // New columns added by migration - types will update on next sync
+      } as any);
+
+      // Log activity
+      await supabase.from('activity_log').insert({
+        user_id: user!.id,
+        action_type: 'quick_scan',
+        action_description: `Quick Scan uitgevoerd: ${url}`,
+        resource_type: 'seo_audit',
+      });
+
+      loadRecentAudits();
+      toast({ 
+        title: 'Quick Scan voltooid!', 
+        description: `Score: ${quickScanResult.score}/100 (${getPageTypeLabel(quickScanResult.pageType)})` 
+      });
+    } catch (error: any) {
+      console.error('Quick scan error:', error);
+      toast({ 
+        title: 'Quick Scan mislukt', 
+        description: error.message || 'Er ging iets mis.',
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsQuickScanning(false);
     }
   };
 
@@ -385,25 +494,48 @@ export default function SeoAudit() {
                     className="h-10 md:h-12 text-sm md:text-lg"
                   />
                 </div>
-                <Button 
-                  onClick={handleAnalyze} 
-                  disabled={isAnalyzing}
-                  size="lg"
-                  className="h-10 md:h-12 px-6 md:px-8"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      <span className="hidden sm:inline">Analyseren...</span>
-                      <span className="sm:hidden">...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Analyseer</span>
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleQuickScan} 
+                    disabled={isAnalyzing || isQuickScanning}
+                    variant="outline"
+                    size="lg"
+                    className="h-10 md:h-12 px-4 md:px-6"
+                    title="Snelle technische check zonder AI (gratis)"
+                  >
+                    {isQuickScanning ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <span className="hidden sm:inline">Scannen...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Gauge className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Quick Scan</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={handleAnalyze} 
+                    disabled={isAnalyzing || isQuickScanning}
+                    size="lg"
+                    className="h-10 md:h-12 px-6 md:px-8"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <span className="hidden sm:inline">Analyseren...</span>
+                        <span className="sm:hidden">...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">AI Analyse</span>
+                        <span className="sm:hidden">Scan</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
                 <Label htmlFor="keyword" className="text-sm font-medium whitespace-nowrap">
@@ -418,6 +550,12 @@ export default function SeoAudit() {
                   className="h-9 text-sm flex-1"
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                <Gauge className="h-3 w-3 inline mr-1" />
+                Quick Scan = technische check (gratis) | 
+                <Search className="h-3 w-3 inline mx-1" />
+                AI Analyse = volledige SEO analyse met AI aanbevelingen
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -425,6 +563,31 @@ export default function SeoAudit() {
         {/* Analysis Results */}
         {analysis && (
           <div className="space-y-4 md:space-y-6">
+            {/* Quick Scan / Page Type Badges */}
+            <div className="flex flex-wrap gap-2">
+              {analysis.isQuickScan && (
+                <Badge variant="secondary" className="text-sm">
+                  <Gauge className="h-3 w-3 mr-1" />
+                  Quick Scan
+                </Badge>
+              )}
+              {analysis.pageType && (
+                <Badge variant={getPageTypeColor(analysis.pageType)}>
+                  {getPageTypeLabel(analysis.pageType)}
+                </Badge>
+              )}
+              {analysis.metadataSources?.titleSource && (
+                <Badge variant="outline" className="font-normal text-xs">
+                  Title: {analysis.metadataSources.titleSource}
+                </Badge>
+              )}
+              {analysis.metadataSources?.descriptionSource && (
+                <Badge variant="outline" className="font-normal text-xs">
+                  Desc: {analysis.metadataSources.descriptionSource}
+                </Badge>
+              )}
+            </div>
+
             {/* Content Truncation Warning */}
             {analysis.truncationInfo?.contentTruncated && (
               <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
@@ -439,21 +602,7 @@ export default function SeoAudit() {
               </div>
             )}
 
-            {/* Metadata Source Indicators */}
-            {analysis.metadataSources && (
-              <div className="flex flex-wrap gap-2 text-xs">
-                {analysis.metadataSources.titleSource && (
-                  <Badge variant="outline" className="font-normal">
-                    Title bron: <span className="font-medium ml-1">{analysis.metadataSources.titleSource}</span>
-                  </Badge>
-                )}
-                {analysis.metadataSources.descriptionSource && (
-                  <Badge variant="outline" className="font-normal">
-                    Description bron: <span className="font-medium ml-1">{analysis.metadataSources.descriptionSource}</span>
-                  </Badge>
-                )}
-              </div>
-            )}
+            {/* Metadata source indicators already shown in badges above */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               {/* Score Card */}
               <Card className="lg:col-span-1">

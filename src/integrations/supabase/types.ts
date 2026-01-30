@@ -431,6 +431,53 @@ export type Database = {
           },
         ]
       }
+      seo_audit_queue: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          page_type: string | null
+          priority: number | null
+          processed_at: string | null
+          result_id: string | null
+          status: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          page_type?: string | null
+          priority?: number | null
+          processed_at?: string | null
+          result_id?: string | null
+          status?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          page_type?: string | null
+          priority?: number | null
+          processed_at?: string | null
+          result_id?: string | null
+          status?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seo_audit_queue_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: false
+            referencedRelation: "seo_audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_audits: {
         Row: {
           content_quality: Json | null
@@ -438,11 +485,13 @@ export type Database = {
           focus_keyword: string | null
           id: string
           image_issues: Json | null
+          is_quick_scan: boolean | null
           issues: Json | null
           keyword_analysis: Json | null
           link_analysis: Json | null
           meta_description: string | null
           metadata_sources: Json | null
+          page_type: string | null
           recommendations: Json | null
           schema_types: string[] | null
           score: number | null
@@ -459,11 +508,13 @@ export type Database = {
           focus_keyword?: string | null
           id?: string
           image_issues?: Json | null
+          is_quick_scan?: boolean | null
           issues?: Json | null
           keyword_analysis?: Json | null
           link_analysis?: Json | null
           meta_description?: string | null
           metadata_sources?: Json | null
+          page_type?: string | null
           recommendations?: Json | null
           schema_types?: string[] | null
           score?: number | null
@@ -480,11 +531,13 @@ export type Database = {
           focus_keyword?: string | null
           id?: string
           image_issues?: Json | null
+          is_quick_scan?: boolean | null
           issues?: Json | null
           keyword_analysis?: Json | null
           link_analysis?: Json | null
           meta_description?: string | null
           metadata_sources?: Json | null
+          page_type?: string | null
           recommendations?: Json | null
           schema_types?: string[] | null
           score?: number | null
